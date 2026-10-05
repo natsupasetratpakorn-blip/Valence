@@ -280,8 +280,11 @@ public final class DialogMenus implements Menus {
                 p("online", team.onlineCount()),
                 p("bank", Format.money(team.bank())))));
 
-        // Small head buttons for every member on top, then the menu buttons, all in one grid.
-        List<ActionButton> buttons = new ArrayList<>(memberButtons(team));
+        List<DialogInput> inputs = List.of(DialogInput.text("search", m("main.search-input"))
+                .maxLength(16).width(DialogKit.SEARCH_WIDTH).build());
+        List<ActionButton> buttons = new ArrayList<>();
+        buttons.add(kit.button(m("main.search"), null, DialogKit.SEARCH_BUTTON_WIDTH,
+                (p, view) -> reopen(p, t -> members(p, t, text(view, "search").trim()))));
         buttons.add(menuButton(m("main.members"), p -> reopen(p, t -> members(p, t))));
         buttons.add(menuButton(m("main.bank"), p -> reopen(p, t -> bank(p, t))));
         buttons.add(menuButton(m("main.top"), this::top));
@@ -312,32 +315,11 @@ public final class DialogMenus implements Menus {
         } else {
             buttons.add(menuButton(m("main.leave"), p -> reopen(p, t -> confirmLeave(p, t))));
         }
-        kit.show(player, t("main.title", c("team", team.displayName())), body, List.of(), buttons, kit.closeButton(), 3);
+        kit.show(player, t("main.title", c("team", team.displayName())), body, inputs, buttons, kit.closeButton(), 2);
     }
 
     private ActionButton menuButton(Component label, java.util.function.Consumer<Player> action) {
-        return kit.button(label, null, DialogKit.MENU_WIDTH, (p, view) -> action.accept(p));
-    }
-
-    private List<ActionButton> memberButtons(Team team) {
-        List<TeamMember> members = new ArrayList<>(team.sortedMembers());
-        members.sort(Comparator.comparing(member -> Bukkit.getPlayer(member.uuid()) == null));
-        List<ActionButton> list = new ArrayList<>();
-        int shown = members.size() > 12 ? 11 : members.size();
-        for (int i = 0; i < shown; i++) {
-            TeamMember member = members.get(i);
-            boolean online = Bukkit.getPlayer(member.uuid()) != null;
-            list.add(kit.button(
-                    m("main.member", c("head", head(member)), c("name", colored(member.name(), i))),
-                    m(online ? "online" : "offline"),
-                    DialogKit.MEMBER_WIDTH,
-                    (p, view) -> reopen(p, t -> profile(p, t, member.uuid()))));
-        }
-        if (members.size() > shown) {
-            list.add(kit.button(m("main.more", p("count", members.size() - shown)), null, DialogKit.MEMBER_WIDTH,
-                    (p, view) -> reopen(p, t -> members(p, t))));
-        }
-        return list;
+        return kit.button(label, null, DialogKit.BUTTON_WIDTH, (p, view) -> action.accept(p));
     }
 
     /**
@@ -382,9 +364,30 @@ public final class DialogMenus implements Menus {
     // Members
 
     private void members(Player player, Team team) {
-        List<DialogBody> body = List.of(kit.text(m("members.text")));
-        List<ActionButton> buttons = new ArrayList<>();
+        members(player, team, "");
+    }
+
+    private void members(Player player, Team team, String search) {
+        String query = search.toLowerCase(Locale.ROOT);
+        List<TeamMember> found = new ArrayList<>();
         for (TeamMember member : team.sortedMembers()) {
+            if (query.isEmpty() || member.name().toLowerCase(Locale.ROOT).contains(query)) {
+                found.add(member);
+            }
+        }
+        // An exact name match comes first.
+        found.sort(Comparator.comparing(member -> !member.name().equalsIgnoreCase(query)));
+        Component text;
+        if (query.isEmpty()) {
+            text = m("members.text");
+        } else if (found.isEmpty()) {
+            text = m("members.not-found", p("search", search));
+        } else {
+            text = m("members.results", p("search", search), p("count", found.size()));
+        }
+        List<DialogBody> body = List.of(kit.item(found.isEmpty() && !query.isEmpty() ? Material.BARRIER : Material.SPYGLASS, text));
+        List<ActionButton> buttons = new ArrayList<>();
+        for (TeamMember member : found) {
             boolean online = Bukkit.getPlayer(member.uuid()) != null;
             TeamRank rank = team.rankOf(member.uuid());
             buttons.add(kit.button(

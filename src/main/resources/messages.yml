@@ -183,8 +183,8 @@ menu:
   main:
     title: "<team>"
     info: "<team> <muted>[<tag>]</muted>\n<muted>Level</muted> <hl><level></hl>   <muted>Members</muted> <hl><members>/<max></hl>   <muted>Online</muted> <hl><online></hl>\n<muted>Bank</muted> <money><bank></money>"
-    member: "<head> <name>"
-    more: "<muted>+<count> more"
+    search-input: "<main>Search a member"
+    search: "<icon:spyglass> <#67E8F9>Search"
     members: "<icon:name_tag> <#7FD8BE>Members"
     bank: "<icon:gold_ingot> <#F2C46D>Bank"
     top: "<icon:nether_star> <#F59E8B>Team Top"
@@ -194,13 +194,15 @@ menu:
     invite: "<icon:writable_book> <#8EC5FF>Invite"
     home: "<icon:ender_pearl> <#A3E635>Team Home"
     log: "<icon:book> <#E9A6D8>Activity"
-    chat: "<icon:feather> <#67E8F9>Chat <muted>(<state>)"
-    leave: "<icon:barrier> <#FF7A7A>Leave"
-    disband: "<icon:barrier> <#FF7A7A>Disband"
+    chat: "<icon:feather> <#5EEAD4>Team Chat <muted>(<state>)"
+    leave: "<icon:barrier> <#FF7A7A>Leave Team"
+    disband: "<icon:barrier> <#FF7A7A>Disband Team"
 
   members:
     title: "<main>Members"
     text: "<muted>Pick a member to see their profile."
+    results: "<main>Results for <hl><search></hl> <muted>(<count>)"
+    not-found: "<bad>No player found.\n<muted>Nobody in your team matches <main><search></main>."
     entry: "<head> <player> <muted><rank>"
     tooltip: "<status> <muted>· joined <joined>"
 

@@ -27,7 +27,7 @@ In a 95 second stress test, 10 players opened 4,516 menus (about 48 per second) 
 ## Features
 
 - **Team creation in a form.** Name, tag, color and icon, all picked in one dialog. You can also use `/team create <name> [tag]`.
-- **Main page.** Shows the team icon, level, member count, bank, and every member with their head, with online players lit up.
+- **Main page.** Shows the team icon, level, member count and bank, plus a search bar that finds any member of your team.
 - **Members list.** Click anyone to open their profile: their head icon, rank, balance, playtime, join date, kills, deaths and how much they have deposited.
 - **Member management.** Promote, demote, set rank, send a private message, kick, or make someone the owner. The buttons only show what your rank is allowed to do.
 - **Custom ranks.** The owner can make up to 10 ranks. Each rank has a name, an icon, a position in the ranking table and its own permissions (invite, kick, promote and demote, deposit, level up, set home, use home, edit settings).
