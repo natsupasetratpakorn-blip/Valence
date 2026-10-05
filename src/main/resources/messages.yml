@@ -1,0 +1,334 @@
+palette:
+  main: "#D6D9DE"
+  muted: "#8A8F98"
+  hl: "#7FD8BE"
+  money: "#F2C46D"
+  good: "#8CD98C"
+  bad: "#F28B82"
+
+prefix: "<hl>Valence</hl> <muted>·</muted> "
+
+chat:
+  no-permission: "<bad>You don't have permission to do that."
+  players-only: "<bad>Only players can use this."
+  player-not-found: "<bad>Couldn't find a player called <hl><player></hl>."
+  team-not-found: "<bad>Couldn't find a team called <hl><name></hl>."
+  not-in-team: "<bad>You are not in a team."
+  already-in-team: "<bad>You are already in a team."
+  target-not-in-your-team: "<bad><player> is not in your team."
+  target-in-team: "<bad><player> is already in a team."
+  no-team-permission: "<bad>Your rank can't do that."
+  owner-only: "<bad>Only the team owner can do that."
+  cant-manage: "<bad>You can only manage members below your rank."
+  reloaded: "<good>Configuration reloaded."
+  invalid-amount: "<bad>Please enter a valid amount."
+  no-economy: "<bad>The bank needs Vault and an economy plugin."
+  dialogs-unsupported: "<muted>This server version has no dialog menus, so here is the chat menu."
+
+  create:
+    success: "<good>You created <team>. Welcome to your new team."
+    name-length: "<bad>Team names must be <min> to <max> characters."
+    tag-length: "<bad>Team tags must be <min> to <max> characters."
+    name-invalid: "<bad>Names and tags can only use letters, numbers and underscores."
+    name-taken: "<bad>A team called <hl><name></hl> already exists."
+    name-blocked: "<bad>That team name is not allowed."
+
+  invite:
+    sent: "<main>You invited <hl><player></hl> to the team."
+    received: "<main><hl><player></hl> invited you to join <team>."
+    buttons: "<good><accept>[Accept]</accept></good> <bad><deny>[Deny]</deny></bad>"
+    already-invited: "<bad><player> already has a pending invite."
+    none: "<bad>You have no pending invite from that team."
+    expired: "<muted>Your invite to <team> has expired."
+    denied: "<main>You declined the invite to <team>."
+    denied-notify: "<muted><player> declined the team invite."
+    team-full: "<bad>That team is full. Level it up to get more slots."
+    self: "<bad>You can't invite yourself."
+
+  join:
+    joined: "<good>You joined <team>."
+    broadcast: "<main><hl><player></hl> joined the team."
+    closed: "<bad>That team is invite only."
+
+  leave:
+    left: "<main>You left <team>."
+    broadcast: "<main><hl><player></hl> left the team."
+    owner: "<bad>Owners can't leave. Transfer the team or disband it."
+
+  disband:
+    confirm: "<bad>This deletes the team for everyone. Type <hl><nosc>/team disband confirm</nosc></hl> to go ahead."
+    done: "<main>You disbanded <team>."
+    broadcast: "<bad>The team was disbanded by the owner."
+
+  kick:
+    done: "<main>You kicked <hl><player></hl> from the team."
+    broadcast: "<main><hl><player></hl> was kicked from the team."
+    target: "<bad>You were kicked from <team>."
+    self: "<bad>You can't kick yourself."
+
+  rank:
+    promoted: "<main><hl><player></hl> is now <rank>."
+    demoted: "<main><hl><player></hl> is now <rank>."
+    set: "<main><hl><player></hl> is now <rank>."
+    you: "<main>Your team rank is now <rank>."
+    highest: "<bad><player> already has the highest rank you can give."
+    lowest: "<bad><player> already has the lowest rank."
+    created: "<good>Created the rank <rank>."
+    saved: "<good>Saved the rank <rank>."
+    deleted: "<main>Deleted the rank <rank>. Its members are now <hl><default></hl>."
+    name-invalid: "<bad>Rank names must be 1 to 16 characters."
+    limit: "<bad>Your team can't have more than <max> ranks."
+    unknown: "<bad>That rank doesn't exist."
+
+  transfer:
+    done: "<main><hl><player></hl> is now the owner of the team."
+    target: "<good>You are now the owner of <team>."
+
+  bank:
+    deposited: "<main>You deposited <money><amount></money> into the team bank."
+    deposit-broadcast: "<main><hl><player></hl> deposited <money><amount></money>."
+    withdrew: "<main>You withdrew <money><amount></money> from the team bank."
+    gave: "<main>You gave <money><amount></money> to <hl><player></hl> from the team bank."
+    received: "<good>You received <money><amount></money> from the team bank."
+    not-enough: "<bad>You don't have enough money."
+    bank-not-enough: "<bad>The team bank doesn't have enough money."
+    min-deposit: "<bad>The smallest deposit is <money><amount></money>."
+
+  level:
+    upgraded: "<good>Your team reached level <hl><level></hl>. You can now have <hl><members></hl> members."
+    max: "<bad>Your team is already at the max level."
+    cost: "<bad>The team bank needs <money><amount></money> to level up."
+
+  settings:
+    saved: "<good>Team settings saved."
+    friendly-fire: "<muted>You can't hurt your teammates."
+
+  home:
+    set: "<good>Team home set."
+    none: "<bad>Your team has no home yet."
+    locked: "<bad>Team home unlocks at level <hl><level></hl>."
+    disabled: "<bad>Team homes are turned off."
+    warmup: "<main>Teleporting in <hl><seconds></hl> seconds. Don't move."
+    moved: "<bad>Teleport cancelled because you moved."
+    cooldown: "<bad>Wait <hl><seconds></hl> seconds before using this again."
+    teleported: "<good>Welcome home."
+
+  team-chat:
+    enabled: "<main>Team chat <good>on</good>. Your messages now go to your team."
+    disabled: "<main>Team chat <bad>off</bad>. Your messages now go to everyone."
+
+  message:
+    sent: "<muted>To <hl><player></hl>: <main><message>"
+    received: "<muted>Team message from <hl><player></hl>: <main><message>"
+    offline: "<bad><player> is offline."
+
+  member-online: "<muted><hl><player></hl> is now online."
+
+  help:
+    - "<hl>Team commands</hl>"
+    - "<hl><nosc>/team</nosc></hl> <muted>open the team menu"
+    - "<hl><nosc>/team create <name> [tag]</nosc></hl> <muted>start a team"
+    - "<hl><nosc>/team invite <player></nosc></hl> <muted>invite someone"
+    - "<hl><nosc>/team accept|deny [team]</nosc></hl> <muted>answer an invite"
+    - "<hl><nosc>/team join <team></nosc></hl> <muted>join an open team"
+    - "<hl><nosc>/team leave</nosc></hl> <muted>leave your team"
+    - "<hl><nosc>/team kick|promote|demote <player></nosc></hl> <muted>manage members"
+    - "<hl><nosc>/team deposit|withdraw <amount></nosc></hl> <muted>use the bank"
+    - "<hl><nosc>/team give <player> <amount></nosc></hl> <muted>pay from the bank"
+    - "<hl><nosc>/team upgrade</nosc></hl> <muted>level up your team"
+    - "<hl><nosc>/team home|sethome</nosc></hl> <muted>team home"
+    - "<hl><nosc>/team top</nosc></hl> <muted>richest teams"
+    - "<hl><nosc>/team chat</nosc></hl> <muted>toggle team chat, or use <nosc>/tc</nosc>"
+
+menu:
+  close: "<icon:barrier> <#9AA0A6>Close"
+  back: "<icon:arrow> <#9AA0A6>Back"
+  cancel: "<icon:barrier> <#9AA0A6>Cancel"
+  confirm: "<icon:lime_dye> <#8CD98C>Confirm"
+  save: "<icon:lime_dye> <#8CD98C>Save"
+  online: "<good>online"
+  offline: "<muted>offline"
+  enabled: "<good>on"
+  disabled: "<muted>off"
+
+  no-team:
+    title: "<main>Teams"
+    text: "<main>You are not in a team yet.\n<muted>Make one or wait for an invite."
+    create: "<icon:emerald> <#8CD98C>Create Team"
+    invites: "<icon:writable_book> <#8EC5FF>Invites <muted>(<count>)"
+    top: "<icon:nether_star> <#F59E8B>Team Top"
+    open-teams: "<icon:oak_sign> <#C3A6FF>Open Teams"
+
+  create:
+    title: "<main>Create a Team"
+    text: "<main>Pick a name, tag, color and icon.\n<muted>You can change these later."
+    name: "<main>Team name"
+    tag: "<main>Tag"
+    color: "<main>Color"
+    icon: "<main>Icon"
+    button: "<icon:emerald> <#8CD98C>Create"
+
+  main:
+    title: "<team>"
+    info: "<team> <muted>[<tag>]</muted>\n<muted>Level</muted> <hl><level></hl>   <muted>Members</muted> <hl><members>/<max></hl>   <muted>Online</muted> <hl><online></hl>\n<muted>Bank</muted> <money><bank></money>"
+    member: "<head> <name>"
+    member-online: "<#E6E6E6>"
+    member-offline: "<#6F747C>"
+    more: "<muted>and <count> more"
+    members: "<icon:name_tag> <#7FD8BE>Members"
+    bank: "<icon:gold_ingot> <#F2C46D>Bank"
+    top: "<icon:nether_star> <#F59E8B>Team Top"
+    players: "<icon:iron_sword> <#C3A6FF>Top Players"
+    ranks: "<icon:golden_helmet> <#FFB86B>Ranks"
+    settings: "<icon:comparator> <#B8C0CC>Settings"
+    invite: "<icon:writable_book> <#8EC5FF>Invite"
+    home: "<icon:ender_pearl> <#A3E635>Team Home"
+    log: "<icon:book> <#E9A6D8>Activity"
+    chat: "<icon:feather> <#67E8F9>Team Chat <muted>(<state>)"
+    leave: "<icon:barrier> <#FF7A7A>Leave Team"
+    disband: "<icon:barrier> <#FF7A7A>Disband Team"
+
+  members:
+    title: "<main>Members"
+    text: "<muted>Pick a member to see their profile."
+    entry: "<head> <main><player></main> <muted><rank>"
+    tooltip: "<status> <muted>· joined <joined>"
+
+  profile:
+    title: "<main><player>"
+    info: "<main><player></main> <muted>·</muted> <rank>\n<status>"
+    stats: "<muted>Balance</muted> <money><balance></money>\n<muted>Playtime</muted> <main><playtime></main>\n<muted>Joined team</muted> <main><joined></main>\n<muted>Kills</muted> <main><kills></main>   <muted>Deaths</muted> <main><deaths></main>\n<muted>Deposited</muted> <money><deposited></money>"
+    promote: "<icon:experience_bottle> <#8CD98C>Promote"
+    demote: "<icon:redstone> <#FFB86B>Demote"
+    set-rank: "<icon:golden_helmet> <#F2C46D>Set Rank"
+    message: "<icon:paper> <#8EC5FF>Message"
+    kick: "<icon:iron_boots> <#FF7A7A>Kick"
+    transfer: "<icon:nether_star> <#E9A6D8>Make Owner"
+
+  rank-pick:
+    title: "<main>Set Rank"
+    text: "<muted>Choose a new rank for <main><player></main>."
+    current: "<rank_icon> <hl>• <name>"
+    other: "<rank_icon> <main><name>"
+
+  message:
+    title: "<main>Message <player>"
+    input: "<main>Message"
+    send: "<icon:paper> <#8CD98C>Send"
+
+  kick-confirm:
+    title: "<bad>Kick <player>?"
+    text: "<main>They will be removed from the team right away."
+
+  transfer-confirm:
+    title: "<bad>Make <player> the owner?"
+    text: "<main>You will become their highest rank and lose owner powers."
+
+  leave-confirm:
+    title: "<bad>Leave the team?"
+    text: "<main>You will lose your rank and stats in this team."
+
+  disband-confirm:
+    title: "<bad>Disband the team?"
+    text: "<main>This deletes the team for everyone.\n<muted>Money left in the bank goes back to you."
+
+  bank:
+    title: "<money>Team Bank"
+    info: "<muted>Balance</muted> <money><bank></money>\n<muted>Your money</muted> <money><balance></money>"
+    level: "<muted>Level</muted> <hl><level></hl> <muted>·</muted> <main><next></main>"
+    next: "Next level costs <cost> and gives <members> slots"
+    maxed: "Max level reached"
+    deposit: "<icon:emerald> <#8CD98C>Deposit"
+    withdraw: "<icon:gold_nugget> <#F2C46D>Withdraw"
+    give: "<icon:diamond> <#8EC5FF>Give"
+    upgrade: "<icon:experience_bottle> <#C3A6FF>Level Up"
+    amount: "<main>Amount"
+    player: "<main>Player"
+    deposit-title: "<money>Deposit"
+    withdraw-title: "<money>Withdraw"
+    give-title: "<money>Give Money"
+
+  top:
+    title: "<main>Team Top"
+    text: "<muted>The richest teams on the server."
+    entry: "<muted>#<position></muted>  <team> <muted>·</muted> <money><bank></money> <muted>· level <level>"
+    empty: "<muted>No teams yet."
+
+  team-info:
+    title: "<team>"
+    info: "<team> <muted>[<tag>]</muted>\n<muted>Owner</muted> <main><owner></main>\n<muted>Level</muted> <hl><level></hl>   <muted>Members</muted> <hl><members>/<max></hl>\n<muted>Bank</muted> <money><bank></money>"
+    join: "<icon:lime_dye> <#8CD98C>Join"
+
+  players:
+    title: "<main>Top Players"
+    kills: "<#FF9E80>Most kills"
+    money: "<money>Richest"
+    deposits: "<#7FD8BE>Top contributors"
+    entry: "<muted>#<position></muted>  <main><player></main> <muted>·</muted> <value>"
+
+  ranks:
+    title: "<main>Ranks"
+    text: "<muted>Higher ranks can manage lower ranks.\nPick a rank to edit it."
+    entry: "<rank> <muted>· position <weight> · <count>"
+    one: "<count> member"
+    many: "<count> members"
+    button: "<rank_icon> <#FFB86B><name>"
+    new: "<icon:name_tag> <#8CD98C>New Rank"
+
+  rank-edit:
+    title: "<main>Edit Rank"
+    new-title: "<main>New Rank"
+    name: "<main>Name"
+    icon: "<main>Icon"
+    weight: "<main>Position"
+    delete: "<icon:barrier> <#FF7A7A>Delete"
+    locked: "<muted>This rank is built in, so only its name and icon can change."
+
+  permission:
+    invite: "Invite players"
+    kick: "Kick members"
+    manage-members: "Promote and demote"
+    deposit: "Deposit money"
+    upgrade: "Level up the team"
+    set-home: "Set team home"
+    use-home: "Use team home"
+    edit-settings: "Edit team settings"
+
+  settings:
+    title: "<main>Team Settings"
+    name: "<main>Name"
+    tag: "<main>Tag"
+    color: "<main>Color"
+    icon: "<main>Icon"
+    open: "<main>Anyone can join"
+    friendly-fire: "<main>Friendly fire"
+    set-home: "<icon:ender_pearl> <#A3E635>Set Home Here"
+
+  invite:
+    title: "<main>Invite a Player"
+    text: "<muted>Pick someone who is online\nand not in a team."
+    player: "<main>Player"
+    send: "<icon:writable_book> <#8CD98C>Send Invite"
+    nobody: "<muted>Nobody is free to invite right now."
+
+  invites:
+    title: "<main>Your Invites"
+    text: "<muted>Teams that want you to join."
+    entry: "<team> <muted>from <inviter>"
+    accept: "<icon:lime_dye> <#8CD98C>Accept"
+    deny: "<icon:red_dye> <#FF7A7A>Deny"
+
+  invite-popup:
+    title: "<main>Team Invite"
+    text: "<hl><player></hl> <main>invited you to join</main> <team><main>.</main>"
+
+  open-teams:
+    title: "<main>Open Teams"
+    text: "<muted>These teams let anyone join."
+    empty: "<muted>No open teams right now."
+
+  log:
+    title: "<main>Activity"
+    text: "<main>Recent team activity"
+    entry: "<muted><time></muted>  <main><text>"
+    empty: "<muted>Nothing has happened yet."

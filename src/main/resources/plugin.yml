@@ -1,0 +1,30 @@
+name: Valence
+version: '${project.version}'
+main: dev.m4sh3r.valence.Valence
+api-version: '1.21'
+author: M4sh3r
+description: A clean dialog based team plugin.
+folia-supported: true
+softdepend:
+  - Vault
+  - VaultUnlocked
+  - PlaceholderAPI
+
+commands:
+  team:
+    description: Open the team menu.
+    aliases: [teams, party, t]
+  teamchat:
+    description: Send a message to your team.
+    aliases: [tc]
+
+permissions:
+  valence.use:
+    description: Use the team commands.
+    default: true
+  valence.create:
+    description: Create a team.
+    default: true
+  valence.admin:
+    description: Reload the plugin and manage any team.
+    default: op

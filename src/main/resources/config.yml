@@ -1,0 +1,91 @@
+# Valence by M4sh3r
+
+team:
+  name-length:
+    min: 3
+    max: 16
+  tag-length:
+    min: 2
+    max: 5
+  invite-expire-seconds: 120
+  default-icon: EMERALD
+  default-color: Aqua
+  friendly-fire: false
+  blocked-names:
+    - admin
+    - staff
+    - owner
+
+levels:
+  1:
+    cost: 0
+    max-members: 4
+  2:
+    cost: 25000
+    max-members: 6
+  3:
+    cost: 75000
+    max-members: 8
+  4:
+    cost: 150000
+    max-members: 10
+  5:
+    cost: 300000
+    max-members: 14
+
+bank:
+  currency-symbol: "$"
+  min-deposit: 10
+  log-size: 50
+
+home:
+  enabled: true
+  unlock-level: 2
+  warmup-seconds: 3
+  cooldown-seconds: 30
+
+chat:
+  small-caps: true
+  team-chat-format: "<#8a8f98>[<team_color><team_tag></team_color>] <#e6e6e6><player></#e6e6e6> <#5c616a>»</#5c616a> <#cde4ff><message>"
+
+menu:
+  no-team-icon: EMERALD
+  date-format: "MMM d, yyyy"
+  leaderboard-size: 10
+
+autosave-minutes: 5
+
+colors:
+  Red: "#FF6B6B"
+  Orange: "#FFA94D"
+  Yellow: "#FFD43B"
+  Lime: "#A9E34B"
+  Green: "#51CF66"
+  Aqua: "#3BC9DB"
+  Blue: "#4DABF7"
+  Purple: "#9775FA"
+  Pink: "#F783AC"
+  White: "#F1F3F5"
+  Gray: "#ADB5BD"
+
+icons:
+  - EMERALD
+  - DIAMOND
+  - GOLD_INGOT
+  - NETHERITE_INGOT
+  - AMETHYST_SHARD
+  - NETHER_STAR
+  - HEART_OF_THE_SEA
+  - TOTEM_OF_UNDYING
+  - BEACON
+  - END_CRYSTAL
+  - IRON_SWORD
+  - DIAMOND_SWORD
+  - BOW
+  - SHIELD
+  - TRIDENT
+  - BLAZE_POWDER
+  - ENDER_EYE
+  - CAKE
+  - TNT
+  - OAK_SAPLING
