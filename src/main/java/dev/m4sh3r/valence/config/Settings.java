@@ -24,7 +24,6 @@ public final class Settings {
     public int inviteExpireSeconds;
     public Material defaultIcon;
     public String defaultColor;
-    public boolean friendlyFire;
     public List<String> blockedNames;
 
     public final TreeMap<Integer, Level> levels = new TreeMap<>();
@@ -32,6 +31,10 @@ public final class Settings {
     public String currencySymbol;
     public double minDeposit;
     public int logSize;
+
+    public boolean chestEnabled;
+    public int chestRows;
+    public int chestUnlockLevel;
 
     public boolean homeEnabled;
     public int homeUnlockLevel;
@@ -58,7 +61,6 @@ public final class Settings {
         inviteExpireSeconds = config.getInt("team.invite-expire-seconds", 120);
         defaultIcon = material(config.getString("team.default-icon"), Material.EMERALD);
         defaultColor = config.getString("team.default-color", "Aqua");
-        friendlyFire = config.getBoolean("team.friendly-fire", false);
         blockedNames = config.getStringList("team.blocked-names").stream().map(s -> s.toLowerCase(Locale.ROOT)).toList();
 
         levels.clear();
@@ -81,6 +83,10 @@ public final class Settings {
         currencySymbol = config.getString("bank.currency-symbol", "$");
         minDeposit = config.getDouble("bank.min-deposit", 10);
         logSize = config.getInt("bank.log-size", 50);
+
+        chestEnabled = config.getBoolean("ender-chest.enabled", true);
+        chestRows = Math.max(1, Math.min(6, config.getInt("ender-chest.rows", 3)));
+        chestUnlockLevel = config.getInt("ender-chest.unlock-level", 1);
 
         homeEnabled = config.getBoolean("home.enabled", true);
         homeUnlockLevel = config.getInt("home.unlock-level", 1);

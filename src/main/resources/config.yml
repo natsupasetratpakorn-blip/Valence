@@ -10,7 +10,6 @@ team:
   invite-expire-seconds: 120
   default-icon: EMERALD
   default-color: Aqua
-  friendly-fire: false
   blocked-names:
     - admin
     - staff
@@ -37,6 +36,11 @@ bank:
   currency-symbol: "$"
   min-deposit: 10
   log-size: 50
+
+ender-chest:
+  enabled: true
+  rows: 3
+  unlock-level: 1
 
 home:
   enabled: true

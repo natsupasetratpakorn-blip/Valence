@@ -298,6 +298,13 @@ public final class DialogMenus implements Menus {
                 Tasks.entity(p, () -> teams().home(p));
             }));
         }
+        if (settings().chestEnabled && team.level() >= settings().chestUnlockLevel
+                && team.has(uuid, TeamPermission.ENDER_CHEST)) {
+            buttons.add(menuButton(m("main.chest"), p -> {
+                DialogKit.close(p);
+                Tasks.entity(p, () -> plugin.chests().open(p));
+            }));
+        }
         if (owner) {
             buttons.add(menuButton(m("main.ranks"), p -> reopen(p, t -> ranks(p, t))));
         }
@@ -308,6 +315,12 @@ public final class DialogMenus implements Menus {
         Component state = m(teams().teamChat(uuid) ? "enabled" : "disabled");
         buttons.add(menuButton(m("main.chat", c("state", state)), p -> {
             teams().toggleTeamChat(p);
+            open(p);
+        }));
+        TeamMember self = team.member(uuid);
+        Component ffState = m(self != null && self.friendlyFire() ? "enabled" : "disabled");
+        buttons.add(menuButton(m("main.friendly-fire", c("state", ffState)), p -> {
+            teams().toggleFriendlyFire(p);
             open(p);
         }));
         if (owner) {
@@ -776,8 +789,7 @@ public final class DialogMenus implements Menus {
                 DialogInput.text("tag", m("settings.tag")).maxLength(settings().tagMax).initial(team.tag()).width(220).build(),
                 DialogInput.singleOption("color", m("settings.color"), colorOptions(team.color())).width(220).build(),
                 DialogInput.singleOption("icon", m("settings.icon"), iconOptions(withIcon(settings().icons, team.icon()), team.icon().name())).width(220).build(),
-                DialogInput.bool("open", m("settings.open")).initial(team.open()).build(),
-                DialogInput.bool("ff", m("settings.friendly-fire")).initial(team.friendlyFire()).build());
+                DialogInput.bool("open", m("settings.open")).initial(team.open()).build());
         List<DialogBody> body = List.of(kit.item(team.icon(), team.displayName()));
         List<ActionButton> buttons = new ArrayList<>();
         buttons.add(kit.button(m("save"), null, (p, view) -> {
@@ -786,8 +798,7 @@ public final class DialogMenus implements Menus {
                     text(view, "tag"),
                     text(view, "color"),
                     Settings.material(text(view, "icon"), null),
-                    Boolean.TRUE.equals(view.getBoolean("open")),
-                    Boolean.TRUE.equals(view.getBoolean("ff")));
+                    Boolean.TRUE.equals(view.getBoolean("open")));
             if (ok) {
                 open(p);
             } else {

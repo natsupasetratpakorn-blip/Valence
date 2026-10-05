@@ -26,8 +26,8 @@ public final class Team {
     private int level = 1;
     private double bank;
     private boolean open;
-    private boolean friendlyFire;
     private TeamHome home;
+    private List<String> chest = List.of();
     private final Map<UUID, TeamMember> members = new ConcurrentHashMap<>();
     private final Map<String, TeamRank> ranks = new ConcurrentHashMap<>();
     private final Deque<LogEntry> log = new ConcurrentLinkedDeque<>();
@@ -125,20 +125,20 @@ public final class Team {
         this.open = open;
     }
 
-    public boolean friendlyFire() {
-        return friendlyFire;
-    }
-
-    public void friendlyFire(boolean friendlyFire) {
-        this.friendlyFire = friendlyFire;
-    }
-
     public TeamHome home() {
         return home;
     }
 
     public void home(TeamHome home) {
         this.home = home;
+    }
+
+    public List<String> chest() {
+        return chest;
+    }
+
+    public void chest(List<String> chest) {
+        this.chest = List.copyOf(chest);
     }
 
     public Map<UUID, TeamMember> members() {

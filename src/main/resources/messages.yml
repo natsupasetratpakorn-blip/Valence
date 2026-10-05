@@ -101,7 +101,6 @@ chat:
 
   settings:
     saved: "<good>Team settings saved."
-    friendly-fire: "<muted>You can't hurt your teammates."
 
   home:
     set: "<good>Team home set."
@@ -112,6 +111,17 @@ chat:
     moved: "<bad>Teleport cancelled because you moved."
     cooldown: "<bad>Wait <hl><seconds></hl> seconds before using this again."
     teleported: "<good>Welcome home."
+
+  friendly-fire:
+    enabled: "<main>Friendly fire <good>on</good>. You can fight teammates who also have it on."
+    disabled: "<main>Friendly fire <bad>off</bad>. Teammates can't hurt you and you can't hurt them."
+    blocked: "<bad>You both need friendly fire on to fight. <muted><nosc>/team ff</nosc>"
+
+  chest:
+    disabled: "<bad>The team ender chest is turned off."
+    locked: "<bad>The team ender chest unlocks at level <hl><level></hl>."
+    busy: "<bad><player> is using the team ender chest right now."
+    returned: "<main>Items from the team ender chest were moved to your inventory."
 
   team-chat:
     enabled: "<main>Team chat <good>on</good>. Your messages now go to your team."
@@ -139,6 +149,8 @@ chat:
     - "<hl><nosc>/team home|sethome</nosc></hl> <muted>team home"
     - "<hl><nosc>/team top</nosc></hl> <muted>richest teams"
     - "<hl><nosc>/team chat</nosc></hl> <muted>toggle team chat, or use <nosc>/tc</nosc>"
+    - "<hl><nosc>/team chest</nosc></hl> <muted>open the team ender chest"
+    - "<hl><nosc>/team ff</nosc></hl> <muted>toggle friendly fire for yourself"
 
 menu:
   # Lists of buttons, like members and ranks, take these colors in order so no two look the same.
@@ -194,6 +206,8 @@ menu:
     invite: "<icon:writable_book> <#8EC5FF>Invite"
     home: "<icon:ender_pearl> <#A3E635>Team Home"
     log: "<icon:book> <#E9A6D8>Activity"
+    chest: "<icon:ender_eye> <#2DD4BF>Ender Chest"
+    friendly-fire: "<icon:golden_sword> <#FCA5A5>Friendly Fire <muted>(<state>)"
     chat: "<icon:feather> <#5EEAD4>Team Chat <muted>(<state>)"
     leave: "<icon:barrier> <#FF7A7A>Leave Team"
     disband: "<icon:barrier> <#FF7A7A>Disband Team"
@@ -305,6 +319,7 @@ menu:
     set-home: "Set team home"
     use-home: "Use team home"
     edit-settings: "Edit team settings"
+    ender-chest: "Use the ender chest"
 
   settings:
     title: "<main>Team Settings"
@@ -313,7 +328,6 @@ menu:
     color: "<main>Color"
     icon: "<main>Icon"
     open: "<main>Anyone can join"
-    friendly-fire: "<main>Friendly fire"
     set-home: "<icon:ender_pearl> <#A3E635>Set Home Here"
 
   invite:
@@ -338,6 +352,9 @@ menu:
     title: "<main>Open Teams"
     text: "<muted>These teams let anyone join."
     empty: "<muted>No open teams right now."
+
+  chest:
+    title: "<team> <#404040>Ender Chest"
 
   log:
     title: "<main>Activity"

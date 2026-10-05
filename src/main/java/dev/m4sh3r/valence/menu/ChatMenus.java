@@ -81,6 +81,7 @@ public final class ChatMenus implements Menus {
                 suggest("main.invite", "/team invite ")));
         player.sendMessage(row(
                 button("main.home", "/team home"),
+                button("main.chest", "/team chest"),
                 msg().menu("main.chat", c("state", msg().menu(plugin.teams().teamChat(player.getUniqueId()) ? "enabled" : "disabled")))
                         .clickEvent(ClickEvent.runCommand("/team chat")),
                 team.owner().equals(player.getUniqueId())

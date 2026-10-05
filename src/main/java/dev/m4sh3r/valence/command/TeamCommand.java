@@ -33,9 +33,9 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
     private static final List<String> SUBCOMMANDS = List.of(
             "create", "invite", "accept", "deny", "join", "leave", "disband", "kick", "promote", "demote",
             "setrank", "transfer", "info", "members", "bank", "deposit", "withdraw", "give", "upgrade", "top",
-            "home", "sethome", "chat", "help");
+            "home", "sethome", "chat", "chest", "ff", "help");
 
-    private static final Set<String> MAIN_THREAD = Set.of("deposit", "withdraw", "give", "disband", "home", "sethome");
+    private static final Set<String> MAIN_THREAD = Set.of("deposit", "withdraw", "give", "disband", "home", "sethome", "chest", "enderchest", "ec");
 
     private final Valence plugin;
 
@@ -203,6 +203,8 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
                 }
             }
             case "upgrade" -> teams().upgrade(player);
+            case "chest", "enderchest", "ec" -> plugin.chests().open(player);
+            case "ff", "friendlyfire", "pvp" -> teams().toggleFriendlyFire(player);
             case "home" -> teams().home(player);
             case "sethome" -> teams().setHome(player);
             case "chat" -> {

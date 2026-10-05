@@ -10,6 +10,7 @@ import net.kyori.adventure.text.minimessage.tag.Tag;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
@@ -132,6 +133,11 @@ public final class Messages {
 
     public void send(CommandSender to, String key, TagResolver... resolvers) {
         to.sendMessage(chat(key, resolvers));
+    }
+
+    public void actionBar(Player to, String key, TagResolver... resolvers) {
+        String text = raw("chat." + key);
+        to.sendActionBar(parse(settings.smallCaps ? SmallCaps.convertMiniMessage(text) : text, resolvers));
     }
 
     public void sendList(CommandSender to, String key) {

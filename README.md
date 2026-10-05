@@ -30,7 +30,7 @@ In a 95 second stress test, 10 players opened 4,516 menus (about 48 per second) 
 - **Main page.** Shows the team icon, level, member count and bank, plus a search bar that finds any member of your team.
 - **Members list.** Click anyone to open their profile: their head icon, rank, balance, playtime, join date, kills, deaths and how much they have deposited.
 - **Member management.** Promote, demote, set rank, send a private message, kick, or make someone the owner. The buttons only show what your rank is allowed to do.
-- **Custom ranks.** The owner can make up to 10 ranks. Each rank has a name, an icon, a position in the ranking table and its own permissions (invite, kick, promote and demote, deposit, level up, set home, use home, edit settings).
+- **Custom ranks.** The owner can make up to 10 ranks. Each rank has a name, an icon, a position in the ranking table and its own permissions (invite, kick, promote and demote, deposit, level up, set home, use home, edit settings, ender chest).
 - **Team bank.** Anyone with permission can deposit. Only the owner can withdraw or give money to a player. Amounts like `5k`, `2.5m` and `1,000` all work.
 - **Team levels.** Spend bank money to level up. Higher levels allow more members.
 - **Team Top.** A leaderboard of the richest teams.
@@ -40,7 +40,8 @@ In a 95 second stress test, 10 players opened 4,516 menus (about 48 per second) 
 - **Invites.** Invites pop up as a dialog with Accept and Deny buttons, plus clickable chat buttons, and they expire.
 - **Open teams.** Teams can let anyone join. Players without a team can browse them.
 - **Activity log.** Joins, leaves, kicks, promotions, deposits and settings changes.
-- **Friendly fire toggle.** Blocks melee, arrows and tamed pets.
+- **Team ender chest.** One shared chest per team (`/team chest` or the Ender Chest button). It saves to the team file and survives restarts. When a team is disbanded, its items go to the owner. On Folia only one player can use it at a time.
+- **Personal friendly fire.** Teammates can't hurt each other. Each player can turn friendly fire on for themselves (`/team ff` or the menu button), and two teammates can only fight when both have it on. Covers melee, arrows, tamed pets and harmful splash potions.
 - **Small caps chat.** Every chat reply looks like ᴛʜɪꜱ. Commands and player names keep the normal font.
 
 ## Commands
@@ -64,6 +65,8 @@ In a 95 second stress test, 10 players opened 4,516 menus (about 48 per second) 
 | `/team upgrade` | Level up the team |
 | `/team home` / `sethome` | Team home |
 | `/team chat [message]` / `/tc [message]` | Team chat |
+| `/team chest` | Open the team ender chest |
+| `/team ff` | Turn friendly fire on or off for yourself |
 | `/team reload` | Reload config and messages (admin) |
 | `/team admin disband <team>` | Delete any team (admin) |
 

@@ -10,7 +10,8 @@ public enum TeamPermission {
     UPGRADE,
     SET_HOME,
     USE_HOME,
-    EDIT_SETTINGS;
+    EDIT_SETTINGS,
+    ENDER_CHEST;
 
     public String key() {
         return name().toLowerCase(Locale.ROOT).replace('_', '-');

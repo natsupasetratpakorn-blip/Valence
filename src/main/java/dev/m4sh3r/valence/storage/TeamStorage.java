@@ -70,7 +70,6 @@ public final class TeamStorage {
         yaml.set("level", team.level());
         yaml.set("bank", team.bank());
         yaml.set("open", team.open());
-        yaml.set("friendly-fire", team.friendlyFire());
         TeamHome home = team.home();
         if (home != null) {
             yaml.set("home.world", home.world());
@@ -95,11 +94,13 @@ public final class TeamStorage {
             yaml.set(path + ".kills", member.kills());
             yaml.set(path + ".deaths", member.deaths());
             yaml.set(path + ".deposited", member.deposited());
+            yaml.set(path + ".friendly-fire", member.friendlyFire());
             if (member.skin() != null) {
                 yaml.set(path + ".skin", member.skin());
                 yaml.set(path + ".skin-signature", member.skinSignature());
             }
         }
+        yaml.set("chest", team.chest());
         List<String> log = new ArrayList<>();
         for (LogEntry entry : team.log()) {
             log.add(entry.time() + "|" + entry.text());
@@ -152,7 +153,6 @@ public final class TeamStorage {
         team.level(Math.max(1, yaml.getInt("level", 1)));
         team.bank(yaml.getDouble("bank"));
         team.open(yaml.getBoolean("open"));
-        team.friendlyFire(yaml.getBoolean("friendly-fire"));
         if (yaml.contains("home.world")) {
             team.home(new TeamHome(yaml.getString("home.world"),
                     yaml.getDouble("home.x"), yaml.getDouble("home.y"), yaml.getDouble("home.z"),
@@ -187,6 +187,7 @@ public final class TeamStorage {
                 member.kills(members.getInt(key + ".kills"));
                 member.deaths(members.getInt(key + ".deaths"));
                 member.deposited(members.getDouble(key + ".deposited"));
+                member.friendlyFire(members.getBoolean(key + ".friendly-fire"));
                 member.skin(members.getString(key + ".skin"), members.getString(key + ".skin-signature"));
                 team.members().put(member.uuid(), member);
             }
@@ -195,6 +196,7 @@ public final class TeamStorage {
             return null;
         }
 
+        team.chest(yaml.getStringList("chest"));
         for (String line : yaml.getStringList("log")) {
             int split = line.indexOf('|');
             if (split > 0) {
@@ -216,6 +218,7 @@ public final class TeamStorage {
             TeamRank member = new TeamRank(TeamRank.MEMBER, "Member", Material.LEATHER_HELMET, TeamRank.MEMBER_WEIGHT);
             member.permissions().add(TeamPermission.DEPOSIT);
             member.permissions().add(TeamPermission.USE_HOME);
+            member.permissions().add(TeamPermission.ENDER_CHEST);
             team.ranks().put(TeamRank.MEMBER, member);
         }
         team.rank(TeamRank.OWNER).weight(TeamRank.OWNER_WEIGHT);

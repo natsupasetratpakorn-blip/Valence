@@ -1,7 +1,6 @@
 package dev.m4sh3r.valence.listener;
 
 import dev.m4sh3r.valence.Valence;
-import dev.m4sh3r.valence.team.Team;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.entity.Player;
@@ -12,10 +11,22 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.entity.PotionSplashEvent;
+import org.bukkit.entity.LivingEntity;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
+
+import java.util.Set;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
 public final class PlayerListener implements Listener {
+
+    private static final Set<PotionEffectType> HARMFUL = Set.of(
+            PotionEffectType.INSTANT_DAMAGE, PotionEffectType.POISON, PotionEffectType.WITHER,
+            PotionEffectType.WEAKNESS, PotionEffectType.SLOWNESS, PotionEffectType.BLINDNESS,
+            PotionEffectType.NAUSEA, PotionEffectType.HUNGER, PotionEffectType.MINING_FATIGUE,
+            PotionEffectType.DARKNESS, PotionEffectType.LEVITATION);
 
     private final Valence plugin;
 
@@ -52,11 +63,33 @@ public final class PlayerListener implements Listener {
         if (attacker == null || attacker.equals(victim)) {
             return;
         }
-        Team team = plugin.teams().teamOf(attacker.getUniqueId());
-        if (team == null || team.friendlyFire() || team.member(victim.getUniqueId()) == null) {
+        if (!plugin.teams().canHurt(attacker.getUniqueId(), victim.getUniqueId())) {
+            event.setCancelled(true);
+            plugin.messages().actionBar(attacker, "friendly-fire.blocked");
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGH)
+    public void onSplash(PotionSplashEvent event) {
+        if (!(event.getPotion().getShooter() instanceof Player thrower)) {
             return;
         }
-        event.setCancelled(true);
+        boolean harmful = false;
+        for (PotionEffect effect : event.getPotion().getEffects()) {
+            if (HARMFUL.contains(effect.getType())) {
+                harmful = true;
+                break;
+            }
+        }
+        if (!harmful) {
+            return;
+        }
+        for (LivingEntity entity : event.getAffectedEntities()) {
+            if (entity instanceof Player victim && !victim.equals(thrower)
+                    && !plugin.teams().canHurt(thrower.getUniqueId(), victim.getUniqueId())) {
+                event.setIntensity(victim, 0);
+            }
+        }
     }
 
     private Player attacker(EntityDamageByEntityEvent event) {

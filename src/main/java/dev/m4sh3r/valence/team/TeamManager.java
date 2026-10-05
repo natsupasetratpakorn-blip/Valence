@@ -205,7 +205,6 @@ public final class TeamManager {
 
         Team team = new Team(UUID.randomUUID(), name, tag, color, icon, player.getUniqueId(), System.currentTimeMillis());
         team.color(color, settings().color(color));
-        team.friendlyFire(settings().friendlyFire);
         TeamStorage.ensureBuiltInRanks(team);
         TeamMember owner = new TeamMember(player.getUniqueId(), player.getName(), TeamRank.OWNER, System.currentTimeMillis());
         applySkin(owner, player);
@@ -425,6 +424,7 @@ public final class TeamManager {
         if (team.bank() > 0 && money().enabled()) {
             money().give(player, team.bank());
         }
+        plugin.chests().disband(team, player);
         broadcast(team, msg().chat("disband.broadcast"), player.getUniqueId());
         msg().send(player, "disband.done", c("team", team.displayName()));
         delete(team);
@@ -432,6 +432,7 @@ public final class TeamManager {
     }
 
     public synchronized void adminDisband(Team team) {
+        plugin.chests().disband(team, Bukkit.getPlayer(team.owner()));
         broadcast(team, msg().chat("disband.broadcast"), null);
         delete(team);
     }
@@ -453,6 +454,7 @@ public final class TeamManager {
         playerTeams.remove(uuid, team.id());
         teamChat.remove(uuid);
         team.markDirty();
+        plugin.chests().kickViewer(uuid);
     }
 
     public synchronized boolean kick(Player actor, UUID target) {
@@ -770,7 +772,7 @@ public final class TeamManager {
     // Settings and home
 
     public synchronized boolean updateSettings(Player actor, String name, String tag, String color, Material icon,
-                                               boolean open, boolean friendlyFire) {
+                                               boolean open) {
         Team team = requireTeam(actor);
         if (team == null || !require(actor, team, TeamPermission.EDIT_SETTINGS)) {
             return false;
@@ -793,7 +795,6 @@ public final class TeamManager {
             team.icon(icon);
         }
         team.open(open);
-        team.friendlyFire(friendlyFire);
         team.log(actor.getName() + " changed the team settings", settings().logSize);
         msg().send(actor, "settings.saved");
         return true;
@@ -868,6 +869,37 @@ public final class TeamManager {
                 msg().send(player, "home.teleported");
             }
         });
+    }
+
+    /**
+     * Friendly fire is a personal choice. Two teammates can only hurt each other when both have it on.
+     */
+    public void toggleFriendlyFire(Player player) {
+        Team team = requireTeam(player);
+        if (team == null) {
+            return;
+        }
+        TeamMember member = team.member(player.getUniqueId());
+        boolean on;
+        synchronized (this) {
+            on = !member.friendlyFire();
+            member.friendlyFire(on);
+            team.markDirty();
+        }
+        msg().send(player, on ? "friendly-fire.enabled" : "friendly-fire.disabled");
+    }
+
+    public boolean canHurt(UUID attacker, UUID victim) {
+        Team team = teamOf(attacker);
+        if (team == null) {
+            return true;
+        }
+        TeamMember victimMember = team.member(victim);
+        if (victimMember == null) {
+            return true;
+        }
+        TeamMember attackerMember = team.member(attacker);
+        return attackerMember.friendlyFire() && victimMember.friendlyFire();
     }
 
     // Chat

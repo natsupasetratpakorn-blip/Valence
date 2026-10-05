@@ -1,5 +1,6 @@
 package dev.m4sh3r.valence;
 
+import dev.m4sh3r.valence.chest.TeamChests;
 import dev.m4sh3r.valence.command.TeamChatCommand;
 import dev.m4sh3r.valence.command.TeamCommand;
 import dev.m4sh3r.valence.config.Messages;
@@ -27,6 +28,7 @@ public final class Valence extends JavaPlugin {
     private TeamStorage storage;
     private TeamManager teams;
     private Menus menus;
+    private TeamChests chests;
     private Money money = Money.NONE;
 
     @Override
@@ -58,6 +60,8 @@ public final class Valence extends JavaPlugin {
             teamChat.setExecutor(new TeamChatCommand(this));
         }
         Bukkit.getPluginManager().registerEvents(new PlayerListener(this), this);
+        chests = new TeamChests(this);
+        Bukkit.getPluginManager().registerEvents(chests, this);
 
         // Economy plugins often register late, so hook once the server is fully started.
         Tasks.global(this::hookEconomy);
@@ -73,6 +77,9 @@ public final class Valence extends JavaPlugin {
     @Override
     public void onDisable() {
         Tasks.cancelAll();
+        if (chests != null) {
+            chests.saveOpen();
+        }
         if (teams != null) {
             teams.saveAll();
         }
@@ -120,6 +127,10 @@ public final class Valence extends JavaPlugin {
 
     public TeamManager teams() {
         return teams;
+    }
+
+    public TeamChests chests() {
+        return chests;
     }
 
     public Menus menus() {

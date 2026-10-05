@@ -11,6 +11,7 @@ public final class TeamMember {
     private int kills;
     private int deaths;
     private double deposited;
+    private boolean friendlyFire;
     private String skin;
     private String skinSignature;
 
@@ -67,6 +68,14 @@ public final class TeamMember {
 
     public void deposited(double deposited) {
         this.deposited = deposited;
+    }
+
+    public boolean friendlyFire() {
+        return friendlyFire;
+    }
+
+    public void friendlyFire(boolean friendlyFire) {
+        this.friendlyFire = friendlyFire;
     }
 
     public String skin() {
