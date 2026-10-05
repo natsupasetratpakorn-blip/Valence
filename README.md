@@ -46,7 +46,7 @@ In a 95 second stress test, 10 players opened 4,516 menus (about 48 per second) 
   - **Disband while open:** the items go to whoever has the chest open, never to a deleted team.
   - **Old saves:** a slow background save can't overwrite a newer one, and a deleted team's file never comes back.
 - **Personal friendly fire.** Teammates can't hurt each other. Each player can turn friendly fire on for themselves (`/team ff` or the menu button), and two teammates can only fight when both have it on. Covers melee, arrows, tamed pets and harmful splash potions.
-- **Team prefix.** Shows the team's item icon and name in its color before player names in chat and in the tab list. The format is set in `config.yml`, and both places can be turned off.
+- **Team prefix.** Shows the team's item icon and tag (like VAL) in its color before player names in chat and in the tab list. The format is set in `config.yml`, and both places can be turned off.
 - **Small caps chat.** Every chat reply looks like ᴛʜɪꜱ. Commands and player names keep the normal font.
 
 ## Commands

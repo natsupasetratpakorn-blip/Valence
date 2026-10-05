@@ -49,7 +49,7 @@ home:
   cooldown-seconds: 30
 
 prefix:
-  format: "<team_icon> <team_color><team_name></team_color> "
+  format: "<team_icon> <team_color><team_tag></team_color> "
   chat: true
   tab-list: true
 
