@@ -5,6 +5,8 @@ import dev.m4sh3r.valence.team.Team;
 import dev.m4sh3r.valence.team.TeamMember;
 import dev.m4sh3r.valence.util.Format;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.OfflinePlayer;
 import org.jetbrains.annotations.NotNull;
 
@@ -49,6 +51,12 @@ public final class ValenceExpansion extends PlaceholderExpansion {
         Team team = plugin.teams().teamOf(player.getUniqueId());
         if (params.equals("has_team")) {
             return team != null ? "yes" : "no";
+        }
+        if (params.equals("prefix")) {
+            return team == null ? "" : MiniMessage.miniMessage().serialize(plugin.prefixes().of(team));
+        }
+        if (params.equals("prefix_legacy")) {
+            return team == null ? "" : LegacyComponentSerializer.legacySection().serialize(plugin.prefixes().of(team));
         }
         if (team == null) {
             return "";

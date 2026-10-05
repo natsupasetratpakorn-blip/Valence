@@ -45,7 +45,7 @@ public final class DialogMenus implements Menus {
     private static final List<Material> RANK_ICONS = List.of(
             Material.LEATHER_HELMET, Material.CHAINMAIL_HELMET, Material.IRON_HELMET, Material.GOLDEN_HELMET,
             Material.DIAMOND_HELMET, Material.NETHERITE_HELMET, Material.WOODEN_SWORD, Material.IRON_SWORD,
-            Material.DIAMOND_SWORD, Material.SHIELD, Material.BOOK, Material.WRITABLE_BOOK, Material.PAPER);
+            Material.DIAMOND_SWORD, Material.GOLDEN_SWORD, Material.BOOK, Material.WRITABLE_BOOK, Material.PAPER);
 
     private final Valence plugin;
     private final DialogKit kit;
@@ -82,8 +82,7 @@ public final class DialogMenus implements Menus {
     }
 
     private static Component icon(Material material) {
-        String key = material.getKey().getKey();
-        return Icons.item(material.isBlock() ? "block/" + key : key);
+        return Icons.material(material);
     }
 
     private static Component head(TeamMember member) {

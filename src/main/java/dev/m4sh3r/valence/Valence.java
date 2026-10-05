@@ -13,6 +13,7 @@ import dev.m4sh3r.valence.menu.MenuFactory;
 import dev.m4sh3r.valence.menu.Menus;
 import dev.m4sh3r.valence.storage.TeamStorage;
 import dev.m4sh3r.valence.team.TeamManager;
+import dev.m4sh3r.valence.team.TeamPrefix;
 import dev.m4sh3r.valence.util.Format;
 import dev.m4sh3r.valence.util.Tasks;
 import org.bukkit.Bukkit;
@@ -29,6 +30,7 @@ public final class Valence extends JavaPlugin {
     private TeamManager teams;
     private Menus menus;
     private TeamChests chests;
+    private TeamPrefix prefixes;
     private Money money = Money.NONE;
 
     @Override
@@ -60,6 +62,8 @@ public final class Valence extends JavaPlugin {
             teamChat.setExecutor(new TeamChatCommand(this));
         }
         Bukkit.getPluginManager().registerEvents(new PlayerListener(this), this);
+        prefixes = new TeamPrefix(this);
+        Bukkit.getPluginManager().registerEvents(prefixes, this);
         chests = new TeamChests(this);
         Bukkit.getPluginManager().registerEvents(chests, this);
 
@@ -108,6 +112,7 @@ public final class Valence extends JavaPlugin {
         Format.setup(settings.currencySymbol, settings.dateFormat);
         messages.load();
         teams.refreshColors();
+        prefixes.reload();
         if (!money.enabled()) {
             hookEconomy();
         }
@@ -127,6 +132,10 @@ public final class Valence extends JavaPlugin {
 
     public TeamManager teams() {
         return teams;
+    }
+
+    public TeamPrefix prefixes() {
+        return prefixes;
     }
 
     public TeamChests chests() {

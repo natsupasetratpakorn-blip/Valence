@@ -19,6 +19,18 @@ public final class Icons {
         return SUPPORTED ? IconsImpl.sprite(name) : Component.empty();
     }
 
+    /**
+     * The small picture for an item or block. A few blocks have no texture named after them.
+     */
+    public static Component material(org.bukkit.Material material) {
+        String key = material.getKey().getKey();
+        String sprite = switch (key) {
+            case "tnt" -> "block/tnt_side";
+            default -> material.isBlock() ? "block/" + key : key;
+        };
+        return item(sprite);
+    }
+
     public static Component head(UUID uuid, String name, String texture, String signature) {
         return SUPPORTED ? IconsImpl.head(uuid, name, texture, signature) : Component.empty();
     }

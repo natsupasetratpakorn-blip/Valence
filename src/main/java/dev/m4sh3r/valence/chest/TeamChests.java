@@ -9,8 +9,11 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
@@ -18,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -25,15 +29,26 @@ import static dev.m4sh3r.valence.config.Messages.c;
 import static dev.m4sh3r.valence.config.Messages.p;
 
 /**
- * One shared chest per team. Items are saved as text in the team file whenever someone closes it.
+ * One shared chest per team.
+ *
+ * How it stays dupe free:
+ * - Every item lives in exactly one place: the live chest while it is open, the team file while it is closed.
+ * - Changes are saved together with the player's own inventory (at most twice a second, and on close),
+ *   so after a crash the chest and the player always come back from the same moment.
+ * - On Folia only one player can hold a team's chest, claimed before it opens, so two region threads
+ *   never touch the same chest.
+ * - If the team is disbanded while the chest is open, whoever closes it gets the items instead of a
+ *   deleted team, and the owner only gets the saved items when nobody has it open.
  */
 public final class TeamChests implements Listener {
 
-    // Folia runs players in different regions on different threads, so only one person may use a chest at a time there.
     private static final boolean FOLIA = folia();
 
     private final Valence plugin;
     private final Map<UUID, Inventory> open = new ConcurrentHashMap<>();
+    private final Map<UUID, UUID> holders = new ConcurrentHashMap<>();
+    private final Set<UUID> disbanded = ConcurrentHashMap.newKeySet();
+    private final Set<UUID> pendingSave = ConcurrentHashMap.newKeySet();
 
     public TeamChests(Valence plugin) {
         this.plugin = plugin;
@@ -61,17 +76,22 @@ public final class TeamChests implements Listener {
         }
         Inventory inventory;
         synchronized (this) {
-            inventory = open.get(team.id());
-            if (inventory != null && FOLIA && !inventory.getViewers().isEmpty()) {
-                plugin.messages().send(player, "chest.busy", p("player", inventory.getViewers().get(0).getName()));
+            if (disbanded.contains(team.id())) {
                 return;
             }
-            if (inventory == null) {
-                inventory = create(team);
-                open.put(team.id(), inventory);
+            if (FOLIA) {
+                UUID holder = holders.get(team.id());
+                if (holder != null && !holder.equals(player.getUniqueId())) {
+                    plugin.messages().send(player, "chest.busy", p("player", plugin.teams().nameOf(holder)));
+                    return;
+                }
+                holders.put(team.id(), player.getUniqueId());
             }
+            inventory = open.computeIfAbsent(team.id(), id -> create(team));
         }
-        player.openInventory(inventory);
+        if (player.openInventory(inventory) == null) {
+            release(team.id(), player.getUniqueId(), inventory);
+        }
     }
 
     private Inventory create(Team team) {
@@ -81,13 +101,57 @@ public final class TeamChests implements Listener {
                 SmallCaps.component(plugin.messages().menu("chest.title", c("team", team.displayName()))));
         holder.inventory(inventory);
         List<String> data = team.chest();
-        for (int i = 0; i < Math.min(size, data.size()); i++) {
+        for (int i = 0; i < data.size(); i++) {
             ItemStack item = decode(data.get(i));
-            if (item != null) {
+            if (item == null) {
+                continue;
+            }
+            if (i < size) {
                 inventory.setItem(i, item);
+            } else {
+                // The chest was made smaller in the config. Keep the extra items instead of deleting them.
+                inventory.addItem(item);
             }
         }
         return inventory;
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onClick(InventoryClickEvent event) {
+        if (event.getView().getTopInventory().getHolder(false) instanceof TeamChestHolder holder
+                && event.getWhoClicked() instanceof Player player) {
+            saveSoon(holder.teamId(), player, event.getView().getTopInventory());
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onDrag(InventoryDragEvent event) {
+        if (event.getView().getTopInventory().getHolder(false) instanceof TeamChestHolder holder
+                && event.getWhoClicked() instanceof Player player) {
+            saveSoon(holder.teamId(), player, event.getView().getTopInventory());
+        }
+    }
+
+    // The click has not changed the inventory yet, so this runs a bit later on the same thread.
+    // Quick clicks are bundled into one save.
+    private void saveSoon(UUID teamId, Player player, Inventory inventory) {
+        if (!pendingSave.add(teamId)) {
+            return;
+        }
+        Tasks.entityLater(player, () -> {
+            pendingSave.remove(teamId);
+            Team team = plugin.teams().team(teamId);
+            if (team != null && !disbanded.contains(teamId)) {
+                commit(team, player, inventory);
+            }
+        }, 10);
+    }
+
+    // Player first, then the chest. If the server dies in between, an item can go missing but never doubles.
+    private void commit(Team team, Player player, Inventory inventory) {
+        save(team, inventory);
+        player.saveData();
+        plugin.teams().writeNow(team);
     }
 
     @EventHandler
@@ -95,15 +159,46 @@ public final class TeamChests implements Listener {
         if (!(event.getInventory().getHolder(false) instanceof TeamChestHolder holder)) {
             return;
         }
+        Inventory inventory = event.getInventory();
         Team team = plugin.teams().team(holder.teamId());
-        if (team != null) {
-            save(team, event.getInventory());
+        if (team == null || disbanded.contains(holder.teamId())) {
+            giveBack(event.getPlayer(), inventory);
+        } else if (event.getPlayer() instanceof Player player) {
+            commit(team, player, inventory);
         }
-        synchronized (this) {
-            boolean othersLooking = event.getInventory().getViewers().stream().anyMatch(v -> !v.equals(event.getPlayer()));
-            if (!othersLooking) {
-                open.remove(holder.teamId(), event.getInventory());
+        release(holder.teamId(), event.getPlayer().getUniqueId(), inventory);
+    }
+
+    private synchronized void release(UUID teamId, UUID playerId, Inventory inventory) {
+        holders.remove(teamId, playerId);
+        boolean othersLooking = inventory.getViewers().stream().anyMatch(v -> !v.getUniqueId().equals(playerId));
+        if (!othersLooking) {
+            open.remove(teamId, inventory);
+            if (disbanded.remove(teamId)) {
+                inventory.clear();
             }
+        }
+    }
+
+    private void giveBack(HumanEntity player, Inventory inventory) {
+        List<ItemStack> items = new ArrayList<>();
+        for (ItemStack item : inventory.getContents()) {
+            if (item != null && !item.getType().isAir()) {
+                items.add(item);
+            }
+        }
+        inventory.clear();
+        if (items.isEmpty()) {
+            return;
+        }
+        for (ItemStack left : player.getInventory().addItem(items.toArray(new ItemStack[0])).values()) {
+            player.getWorld().dropItemNaturally(player.getLocation(), left);
+        }
+        if (player instanceof Player online) {
+            online.saveData();
+        }
+        if (player instanceof Player online) {
+            plugin.messages().send(online, "chest.returned");
         }
     }
 
@@ -133,39 +228,33 @@ public final class TeamChests implements Listener {
     }
 
     /**
-     * Empties a disbanded team's chest into the owner's inventory, dropping whatever doesn't fit.
+     * Called while the team is being disbanded.
      */
     public void disband(Team team, Player owner) {
-        Inventory inventory = open.remove(team.id());
         List<ItemStack> items = new ArrayList<>();
-        if (inventory != null) {
-            for (HumanEntity viewer : new ArrayList<>(inventory.getViewers())) {
-                if (viewer instanceof Player player && !player.equals(owner)) {
-                    kickViewer(player.getUniqueId());
+        synchronized (this) {
+            disbanded.add(team.id());
+            Inventory inventory = open.get(team.id());
+            if (inventory != null) {
+                // Someone has it open. They get the items when it closes, which we force now.
+                for (HumanEntity viewer : new ArrayList<>(inventory.getViewers())) {
+                    kickViewer(viewer.getUniqueId());
+                }
+            } else {
+                disbanded.remove(team.id());
+                for (String line : team.chest()) {
+                    ItemStack item = decode(line);
+                    if (item != null) {
+                        items.add(item);
+                    }
                 }
             }
-            for (ItemStack item : inventory.getContents()) {
-                if (item != null) {
-                    items.add(item.clone());
-                }
-            }
-            inventory.clear();
-        } else {
-            for (String line : team.chest()) {
-                ItemStack item = decode(line);
-                if (item != null) {
-                    items.add(item);
-                }
-            }
+            team.chest(List.of());
         }
-        team.chest(List.of());
         if (owner == null || items.isEmpty()) {
             return;
         }
         Tasks.entity(owner, () -> {
-            if (owner.getOpenInventory().getTopInventory().getHolder(false) instanceof TeamChestHolder) {
-                owner.closeInventory();
-            }
             for (ItemStack left : owner.getInventory().addItem(items.toArray(new ItemStack[0])).values()) {
                 owner.getWorld().dropItemNaturally(owner.getLocation(), left);
             }
@@ -176,7 +265,7 @@ public final class TeamChests implements Listener {
     public void saveOpen() {
         for (Map.Entry<UUID, Inventory> entry : open.entrySet()) {
             Team team = plugin.teams().team(entry.getKey());
-            if (team != null) {
+            if (team != null && !disbanded.contains(entry.getKey())) {
                 save(team, entry.getValue());
             }
             for (HumanEntity viewer : new ArrayList<>(entry.getValue().getViewers())) {
@@ -184,6 +273,7 @@ public final class TeamChests implements Listener {
             }
         }
         open.clear();
+        holders.clear();
     }
 
     private static String encode(ItemStack item) {

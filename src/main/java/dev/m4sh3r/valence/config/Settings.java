@@ -41,6 +41,10 @@ public final class Settings {
     public int homeWarmup;
     public int homeCooldown;
 
+    public String prefixFormat;
+    public boolean prefixChat;
+    public boolean prefixTab;
+
     public boolean smallCaps;
     public String teamChatFormat;
 
@@ -92,6 +96,10 @@ public final class Settings {
         homeUnlockLevel = config.getInt("home.unlock-level", 1);
         homeWarmup = config.getInt("home.warmup-seconds", 3);
         homeCooldown = config.getInt("home.cooldown-seconds", 30);
+
+        prefixFormat = config.getString("prefix.format", "<team_icon> <team_color><team_name></team_color> ");
+        prefixChat = config.getBoolean("prefix.chat", true);
+        prefixTab = config.getBoolean("prefix.tab-list", true);
 
         smallCaps = config.getBoolean("chat.small-caps", true);
         teamChatFormat = config.getString("chat.team-chat-format", "[<team_tag>] <player>: <message>");

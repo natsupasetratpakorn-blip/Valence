@@ -66,9 +66,16 @@ public final class Messages {
                 Tag.selfClosingInserting(Icons.item(args.popOr("icon needs an item name").value()))));
         palette = TagResolver.resolver(colors);
         prefix = yaml.getString("prefix", "");
+        listColors = loadListColors();
     }
 
+    private List<TextColor> listColors = List.of();
+
     public List<TextColor> listColors() {
+        return listColors;
+    }
+
+    private List<TextColor> loadListColors() {
         List<TextColor> list = new ArrayList<>();
         for (String hex : yaml.getStringList("menu.list-colors")) {
             TextColor color = TextColor.fromHexString(hex);

@@ -115,10 +115,20 @@ public final class TeamManager {
         return team.members().size() >= maxMembers(team);
     }
 
+    private volatile List<Team> topCache = List.of();
+    private volatile long topCacheTime;
+
+    // Sorting every team on each look is wasteful on big servers, so the leaderboard refreshes every few seconds.
     public List<Team> topTeams() {
+        long now = System.currentTimeMillis();
+        if (now - topCacheTime < 5_000) {
+            return topCache;
+        }
         List<Team> list = new ArrayList<>(teams.values());
         list.sort(Comparator.comparingDouble((Team t) -> t.bank()).reversed().thenComparing(t -> t.name()));
-        return list.subList(0, Math.min(settings().leaderboardSize, list.size()));
+        topCache = List.copyOf(list.subList(0, Math.min(settings().leaderboardSize, list.size())));
+        topCacheTime = now;
+        return topCache;
     }
 
     public List<Team> openTeams() {
@@ -211,6 +221,7 @@ public final class TeamManager {
         team.members().put(owner.uuid(), owner);
         teams.put(team.id(), team);
         playerTeams.put(player.getUniqueId(), team.id());
+        plugin.prefixes().refreshTab(player.getUniqueId());
         invites.remove(player.getUniqueId());
         team.log(player.getName() + " created the team", settings().logSize);
         msg().send(player, "create.success", c("team", team.displayName()));
@@ -392,6 +403,7 @@ public final class TeamManager {
         applySkin(member, player);
         team.members().put(member.uuid(), member);
         playerTeams.put(player.getUniqueId(), team.id());
+        plugin.prefixes().refreshTab(player.getUniqueId());
         invites.remove(player.getUniqueId());
         team.log(player.getName() + " joined", settings().logSize);
         broadcast(team, msg().chat("join.broadcast", p("player", player.getName())), player.getUniqueId());
@@ -439,10 +451,13 @@ public final class TeamManager {
 
     private void delete(Team team) {
         teams.remove(team.id());
+        topCacheTime = 0;
         for (UUID member : team.members().keySet()) {
             playerTeams.remove(member, team.id());
             teamChat.remove(member);
+            plugin.prefixes().refreshTab(member);
         }
+        plugin.prefixes().forget(team);
         for (Map<UUID, Invite> map : invites.values()) {
             map.remove(team.id());
         }
@@ -455,6 +470,7 @@ public final class TeamManager {
         teamChat.remove(uuid);
         team.markDirty();
         plugin.chests().kickViewer(uuid);
+        plugin.prefixes().refreshTab(uuid);
     }
 
     public synchronized boolean kick(Player actor, UUID target) {
@@ -764,6 +780,7 @@ public final class TeamManager {
         }
         team.bank(team.bank() - next.cost());
         team.level(next.level());
+        plugin.prefixes().refresh(team);
         team.log(actor.getName() + " leveled the team to " + next.level(), settings().logSize);
         broadcast(team, msg().chat("level.upgraded", p("level", next.level()), p("members", next.maxMembers())), null);
         return true;
@@ -796,6 +813,7 @@ public final class TeamManager {
         }
         team.open(open);
         team.log(actor.getName() + " changed the team settings", settings().logSize);
+        plugin.prefixes().refresh(team);
         msg().send(actor, "settings.saved");
         return true;
     }
@@ -982,6 +1000,7 @@ public final class TeamManager {
             applySkin(member, player);
             team.markDirty();
         }
+        plugin.prefixes().refreshTab(player.getUniqueId());
         String name = player.getName();
         Tasks.async(() -> broadcast(team, msg().chat("member-online", p("player", name)), player.getUniqueId()));
     }
@@ -1070,13 +1089,39 @@ public final class TeamManager {
             for (Team team : teams.values()) {
                 if (team.dirty()) {
                     team.clean();
-                    pending.add(new Object[]{team.id(), plugin.storage().snapshot(team)});
+                    pending.add(new Object[]{team.id(), plugin.storage().snapshot(team), plugin.storage().nextVersion()});
                 }
             }
         }
         for (Object[] entry : pending) {
-            plugin.storage().write((UUID) entry[0], (String) entry[1]);
+            plugin.storage().write((UUID) entry[0], (String) entry[1], (Long) entry[2]);
         }
+    }
+
+    private final Set<UUID> writeQueued = ConcurrentHashMap.newKeySet();
+
+    /**
+     * Writes one team to disk right away, off the main thread. Calls that pile up become one write.
+     */
+    public void writeNow(Team team) {
+        if (!writeQueued.add(team.id())) {
+            return;
+        }
+        Tasks.async(() -> {
+            writeQueued.remove(team.id());
+            String data;
+            long version;
+            synchronized (this) {
+                // A disbanded team must never be written back.
+                if (teams.get(team.id()) != team) {
+                    return;
+                }
+                team.clean();
+                data = plugin.storage().snapshot(team);
+                version = plugin.storage().nextVersion();
+            }
+            plugin.storage().write(team.id(), data, version);
+        });
     }
 
     public void saveAll() {

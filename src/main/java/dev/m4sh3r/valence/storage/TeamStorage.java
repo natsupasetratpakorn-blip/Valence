@@ -18,7 +18,10 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 
 public final class TeamStorage {
@@ -109,7 +112,30 @@ public final class TeamStorage {
         return yaml.saveToString();
     }
 
-    public void write(UUID id, String data) {
+    private final AtomicLong versions = new AtomicLong();
+    private final Map<UUID, Long> written = new ConcurrentHashMap<>();
+
+    /**
+     * Take this together with the snapshot, while the team is locked.
+     */
+    public long nextVersion() {
+        return versions.incrementAndGet();
+    }
+
+    /**
+     * Saves run on background threads and can finish out of order. The version makes sure an older
+     * snapshot never replaces a newer file, and a deleted team never comes back.
+     */
+    public synchronized void write(UUID id, String data, long version) {
+        Long last = written.get(id);
+        if (last != null && last >= version) {
+            return;
+        }
+        written.put(id, version);
+        write(id, data);
+    }
+
+    private void write(UUID id, String data) {
         if (!folder.exists() && !folder.mkdirs()) {
             plugin.getLogger().warning("Could not create the teams folder.");
             return;
@@ -128,7 +154,8 @@ public final class TeamStorage {
         }
     }
 
-    public void delete(UUID id) {
+    public synchronized void delete(UUID id) {
+        written.put(id, Long.MAX_VALUE);
         File file = new File(folder, id + ".yml");
         if (file.exists() && !file.delete()) {
             plugin.getLogger().warning("Could not delete team file " + file.getName());

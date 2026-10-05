@@ -48,6 +48,11 @@ home:
   warmup-seconds: 3
   cooldown-seconds: 30
 
+prefix:
+  format: "<team_icon> <team_color><team_name></team_color> "
+  chat: true
+  tab-list: true
+
 chat:
   small-caps: true
   team-chat-format: "<#8a8f98>[<team_color><team_tag></team_color>] <#e6e6e6><player></#e6e6e6> <#5c616a>»</#5c616a> <#cde4ff><message>"
@@ -86,7 +91,6 @@ icons:
   - IRON_SWORD
   - DIAMOND_SWORD
   - BOW
-  - SHIELD
   - TRIDENT
   - BLAZE_POWDER
   - ENDER_EYE

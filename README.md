@@ -40,8 +40,13 @@ In a 95 second stress test, 10 players opened 4,516 menus (about 48 per second) 
 - **Invites.** Invites pop up as a dialog with Accept and Deny buttons, plus clickable chat buttons, and they expire.
 - **Open teams.** Teams can let anyone join. Players without a team can browse them.
 - **Activity log.** Joins, leaves, kicks, promotions, deposits and settings changes.
-- **Team ender chest.** One shared chest per team (`/team chest` or the Ender Chest button). It saves to the team file and survives restarts. When a team is disbanded, its items go to the owner. On Folia only one player can use it at a time.
+- **Team ender chest.** One shared chest per team (`/team chest` or the Ender Chest button). When a team is disbanded, its items go to the owner, or to whoever has the chest open.
+  - **Dupe protection:** every change saves the chest and the player's inventory together, so even after a crash both come back from the same moment. Tested by hard-killing the server right after moving items in and right after taking them out: nothing doubled either way.
+  - **One player at a time on Folia:** the chest is locked to one player before it opens, so two region threads never touch it at once.
+  - **Disband while open:** the items go to whoever has the chest open, never to a deleted team.
+  - **Old saves:** a slow background save can't overwrite a newer one, and a deleted team's file never comes back.
 - **Personal friendly fire.** Teammates can't hurt each other. Each player can turn friendly fire on for themselves (`/team ff` or the menu button), and two teammates can only fight when both have it on. Covers melee, arrows, tamed pets and harmful splash potions.
+- **Team prefix.** Shows the team's item icon and name in its color before player names in chat and in the tab list. The format is set in `config.yml`, and both places can be turned off.
 - **Small caps chat.** Every chat reply looks like ᴛʜɪꜱ. Commands and player names keep the normal font.
 
 ## Commands
@@ -83,6 +88,8 @@ Aliases: `/teams`, `/party`, `/t`.
 ## Placeholders
 
 `%valence_team_name%`, `%valence_team_tag%`, `%valence_team_color%`, `%valence_team_level%`, `%valence_team_bank%`, `%valence_team_members%`, `%valence_team_max_members%`, `%valence_team_online%`, `%valence_team_owner%`, `%valence_rank%`, `%valence_kills%`, `%valence_deaths%`, `%valence_has_team%`
+
+`%valence_prefix%` (MiniMessage, with the icon), `%valence_prefix_legacy%` (legacy colors, no icon)
 
 Team Top: `%valence_top_<1-10>_name%`, `_tag`, `_bank`, `_level`
 
