@@ -279,58 +279,63 @@ public final class DialogMenus implements Menus {
                 p("max", teams().maxMembers(team)),
                 p("online", team.onlineCount()),
                 p("bank", Format.money(team.bank())))));
-        body.add(kit.text(memberList(team)));
 
-        List<ActionButton> buttons = new ArrayList<>();
-        buttons.add(kit.button(m("main.members"), null, p -> reopen(p, t -> members(p, t))));
-        buttons.add(kit.button(m("main.bank"), null, p -> reopen(p, t -> bank(p, t))));
-        buttons.add(kit.button(m("main.top"), null, this::top));
-        buttons.add(kit.button(m("main.players"), null, p -> reopen(p, t -> players(p, t))));
+        // Small head buttons for every member on top, then the menu buttons, all in one grid.
+        List<ActionButton> buttons = new ArrayList<>(memberButtons(team));
+        buttons.add(menuButton(m("main.members"), p -> reopen(p, t -> members(p, t))));
+        buttons.add(menuButton(m("main.bank"), p -> reopen(p, t -> bank(p, t))));
+        buttons.add(menuButton(m("main.top"), this::top));
+        buttons.add(menuButton(m("main.players"), p -> reopen(p, t -> players(p, t))));
         if (team.has(uuid, TeamPermission.INVITE)) {
-            buttons.add(kit.button(m("main.invite"), null, p -> reopen(p, t -> invite(p, t))));
+            buttons.add(menuButton(m("main.invite"), p -> reopen(p, t -> invite(p, t))));
         }
         if (team.home() != null && teams().homeUnlocked(team) && team.has(uuid, TeamPermission.USE_HOME)) {
-            buttons.add(kit.button(m("main.home"), null, p -> {
+            buttons.add(menuButton(m("main.home"), p -> {
                 DialogKit.close(p);
                 Tasks.entity(p, () -> teams().home(p));
             }));
         }
         if (owner) {
-            buttons.add(kit.button(m("main.ranks"), null, p -> reopen(p, t -> ranks(p, t))));
+            buttons.add(menuButton(m("main.ranks"), p -> reopen(p, t -> ranks(p, t))));
         }
         if (team.has(uuid, TeamPermission.EDIT_SETTINGS)) {
-            buttons.add(kit.button(m("main.settings"), null, p -> reopen(p, t -> settingsPage(p, t))));
+            buttons.add(menuButton(m("main.settings"), p -> reopen(p, t -> settingsPage(p, t))));
         }
-        buttons.add(kit.button(m("main.log"), null, p -> reopen(p, t -> log(p, t))));
+        buttons.add(menuButton(m("main.log"), p -> reopen(p, t -> log(p, t))));
         Component state = m(teams().teamChat(uuid) ? "enabled" : "disabled");
-        buttons.add(kit.button(m("main.chat", c("state", state)), null, p -> {
+        buttons.add(menuButton(m("main.chat", c("state", state)), p -> {
             teams().toggleTeamChat(p);
             open(p);
         }));
         if (owner) {
-            buttons.add(kit.button(m("main.disband"), null, p -> reopen(p, t -> confirmDisband(p, t))));
+            buttons.add(menuButton(m("main.disband"), p -> reopen(p, t -> confirmDisband(p, t))));
         } else {
-            buttons.add(kit.button(m("main.leave"), null, p -> reopen(p, t -> confirmLeave(p, t))));
+            buttons.add(menuButton(m("main.leave"), p -> reopen(p, t -> confirmLeave(p, t))));
         }
-        kit.show(player, t("main.title", c("team", team.displayName())), body, List.of(), buttons, kit.closeButton(), 2);
+        kit.show(player, t("main.title", c("team", team.displayName())), body, List.of(), buttons, kit.closeButton(), 3);
     }
 
-    private Component memberList(Team team) {
+    private ActionButton menuButton(Component label, java.util.function.Consumer<Player> action) {
+        return kit.button(label, null, DialogKit.MENU_WIDTH, (p, view) -> action.accept(p));
+    }
+
+    private List<ActionButton> memberButtons(Team team) {
         List<TeamMember> members = new ArrayList<>(team.sortedMembers());
         members.sort(Comparator.comparing(member -> Bukkit.getPlayer(member.uuid()) == null));
-        Component list = Component.empty();
-        int shown = Math.min(members.size(), 12);
+        List<ActionButton> list = new ArrayList<>();
+        int shown = members.size() > 12 ? 11 : members.size();
         for (int i = 0; i < shown; i++) {
             TeamMember member = members.get(i);
             boolean online = Bukkit.getPlayer(member.uuid()) != null;
-            if (i > 0) {
-                list = list.append(i % 3 == 0 ? Component.newline() : Component.text("   "));
-            }
-            Component name = m(online ? "main.member-online" : "main.member-offline").append(Component.text(member.name()));
-            list = list.append(m("main.member", c("head", head(member)), c("name", name)));
+            list.add(kit.button(
+                    m("main.member", c("head", head(member)), c("name", colored(member.name(), i))),
+                    m(online ? "online" : "offline"),
+                    DialogKit.MEMBER_WIDTH,
+                    (p, view) -> reopen(p, t -> profile(p, t, member.uuid()))));
         }
         if (members.size() > shown) {
-            list = list.append(Component.newline()).append(m("main.more", p("count", members.size() - shown)));
+            list.add(kit.button(m("main.more", p("count", members.size() - shown)), null, DialogKit.MEMBER_WIDTH,
+                    (p, view) -> reopen(p, t -> members(p, t))));
         }
         return list;
     }

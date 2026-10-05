@@ -32,6 +32,8 @@ import java.util.logging.Logger;
 final class DialogKit {
 
     static final int BUTTON_WIDTH = 150;
+    static final int MENU_WIDTH = 100;
+    static final int MEMBER_WIDTH = 80;
     static final int TEXT_WIDTH = 300;
     static final int ITEM_TEXT_WIDTH = 210;
 
