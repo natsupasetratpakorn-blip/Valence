@@ -67,6 +67,20 @@ public final class Messages {
         prefix = yaml.getString("prefix", "");
     }
 
+    public List<TextColor> listColors() {
+        List<TextColor> list = new ArrayList<>();
+        for (String hex : yaml.getStringList("menu.list-colors")) {
+            TextColor color = TextColor.fromHexString(hex);
+            if (color != null) {
+                list.add(color);
+            }
+        }
+        if (list.isEmpty()) {
+            list.add(TextColor.color(0xD6D9DE));
+        }
+        return list;
+    }
+
     public TagResolver palette() {
         return palette;
     }

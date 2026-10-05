@@ -75,6 +75,12 @@ public final class DialogMenus implements Menus {
         return msg().title(key, resolvers);
     }
 
+    // Gives the n-th button in a list its own color.
+    private Component colored(String text, int index) {
+        List<net.kyori.adventure.text.format.TextColor> colors = msg().listColors();
+        return Component.text(text, colors.get(index % colors.size()));
+    }
+
     private static Component icon(Material material) {
         String key = material.getKey().getKey();
         return Icons.item(material.isBlock() ? "block/" + key : key);
@@ -377,7 +383,7 @@ public final class DialogMenus implements Menus {
             boolean online = Bukkit.getPlayer(member.uuid()) != null;
             TeamRank rank = team.rankOf(member.uuid());
             buttons.add(kit.button(
-                    m("members.entry", c("head", head(member)), p("player", member.name()), p("rank", rank.name())),
+                    m("members.entry", c("head", head(member)), c("player", colored(member.name(), buttons.size())), p("rank", rank.name())),
                     m("members.tooltip", c("status", m(online ? "online" : "offline")), p("joined", Format.date(member.joinedAt()))),
                     p -> reopen(p, t -> profile(p, t, member.uuid()))));
         }
@@ -450,7 +456,7 @@ public final class DialogMenus implements Menus {
                 continue;
             }
             Component label = m(rank == current ? "rank-pick.current" : "rank-pick.other",
-                    c("rank_icon", icon(rank.icon())), p("name", rank.name()));
+                    c("rank_icon", icon(rank.icon())), c("name", colored(rank.name(), buttons.size())));
             buttons.add(kit.button(label, null, p -> {
                 teams().setRank(p, target, rank.id());
                 reopen(p, t -> profile(p, t, target));
@@ -670,7 +676,7 @@ public final class DialogMenus implements Menus {
                     p("weight", rank.weight()),
                     c("count", m(counts.getOrDefault(rank.id(), 0) == 1 ? "ranks.one" : "ranks.many",
                             p("count", counts.getOrDefault(rank.id(), 0)))))));
-            buttons.add(kit.button(m("ranks.button", c("rank_icon", icon(rank.icon())), p("name", rank.name())), null,
+            buttons.add(kit.button(m("ranks.button", c("rank_icon", icon(rank.icon())), c("name", colored(rank.name(), buttons.size()))), null,
                     p -> reopen(p, t -> rankEditor(p, t, rank.id()))));
         }
         if (team.ranks().size() < TeamManager.MAX_RANKS) {
