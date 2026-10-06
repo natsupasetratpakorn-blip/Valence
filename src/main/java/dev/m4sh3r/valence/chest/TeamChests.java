@@ -55,9 +55,68 @@ public final class TeamChests implements Listener {
     }
 
     /**
-     * Call on the player's own thread.
+     * Call on the player's own thread. On a network the chest is first locked to this server and
+     * reloaded from the database, so two servers never hold the same items.
      */
     public void open(Player player) {
+        if (!plugin.storage().backend().networked() || open.containsKey(teamIdOf(player))) {
+            openLocal(player);
+            return;
+        }
+        Team team = plugin.teams().teamOf(player.getUniqueId());
+        if (team == null) {
+            openLocal(player);
+            return;
+        }
+        UUID teamId = team.id();
+        Tasks.async(() -> {
+            try {
+                if (!plugin.storage().backend().lockChest(teamId)) {
+                    plugin.messages().send(player, "chest.other-server");
+                    return;
+                }
+                String latest = plugin.storage().backend().load(teamId);
+                if (latest != null) {
+                    plugin.teams().applyRemote(teamId, latest);
+                }
+            } catch (Exception e) {
+                plugin.getLogger().warning("Could not lock the team ender chest: " + e.getMessage());
+                plugin.messages().send(player, "chest.unavailable");
+                return;
+            }
+            Tasks.entity(player, () -> {
+                openLocal(player);
+                if (!open.containsKey(teamId)) {
+                    unlockLater(teamId);
+                }
+            });
+        });
+    }
+
+    private UUID teamIdOf(Player player) {
+        Team team = plugin.teams().teamOf(player.getUniqueId());
+        return team == null ? new UUID(0, 0) : team.id();
+    }
+
+    private void unlockLater(UUID teamId) {
+        if (!plugin.storage().backend().networked()) {
+            return;
+        }
+        Tasks.async(() -> {
+            try {
+                // The chest must be in the database before another server is allowed to open it.
+                Team team = plugin.teams().team(teamId);
+                if (team != null) {
+                    plugin.teams().writeBlocking(team);
+                }
+                plugin.storage().backend().unlockChest(teamId);
+            } catch (Exception e) {
+                plugin.getLogger().warning("Could not unlock the team ender chest: " + e.getMessage());
+            }
+        });
+    }
+
+    private void openLocal(Player player) {
         Team team = plugin.teams().requireTeam(player);
         if (team == null) {
             return;
@@ -96,7 +155,7 @@ public final class TeamChests implements Listener {
 
     private Inventory create(Team team) {
         TeamChestHolder holder = new TeamChestHolder(team.id());
-        int size = plugin.settings().chestRows * 9;
+        int size = plugin.settings().level(team.level()).chestRows() * 9;
         Inventory inventory = Bukkit.createInventory(holder, size,
                 SmallCaps.component(plugin.messages().menu("chest.title", c("team", team.displayName()))));
         holder.inventory(inventory);
@@ -173,7 +232,9 @@ public final class TeamChests implements Listener {
         holders.remove(teamId, playerId);
         boolean othersLooking = inventory.getViewers().stream().anyMatch(v -> !v.getUniqueId().equals(playerId));
         if (!othersLooking) {
-            open.remove(teamId, inventory);
+            if (open.remove(teamId, inventory)) {
+                unlockLater(teamId);
+            }
             if (disbanded.remove(teamId)) {
                 inventory.clear();
             }
@@ -251,7 +312,16 @@ public final class TeamChests implements Listener {
             }
             team.chest(List.of());
         }
-        if (owner == null || items.isEmpty()) {
+        if (items.isEmpty()) {
+            return;
+        }
+        if (owner == null || !owner.isOnline()) {
+            List<String> encoded = new ArrayList<>();
+            for (ItemStack item : items) {
+                encoded.add(encode(item));
+            }
+            UUID ownerId = team.owner();
+            Tasks.async(() -> plugin.pending().add(ownerId, encoded));
             return;
         }
         Tasks.entity(owner, () -> {
@@ -283,7 +353,7 @@ public final class TeamChests implements Listener {
         return Base64.getEncoder().encodeToString(item.serializeAsBytes());
     }
 
-    private static ItemStack decode(String data) {
+    static ItemStack decode(String data) {
         if (data == null || data.isEmpty()) {
             return null;
         }

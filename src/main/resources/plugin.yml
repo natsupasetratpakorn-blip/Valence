@@ -17,6 +17,9 @@ commands:
   teamchat:
     description: Send a message to your team.
     aliases: [tc]
+  allychat:
+    description: Send a message to your team and its allies.
+    aliases: [ac]
 
 permissions:
   valence.use:

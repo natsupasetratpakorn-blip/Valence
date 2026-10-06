@@ -11,7 +11,9 @@ public enum TeamPermission {
     SET_HOME,
     USE_HOME,
     EDIT_SETTINGS,
-    ENDER_CHEST;
+    ENDER_CHEST,
+    MANAGE_ALLIES,
+    SET_WAYPOINT;
 
     public String key() {
         return name().toLowerCase(Locale.ROOT).replace('_', '-');

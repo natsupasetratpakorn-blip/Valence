@@ -291,11 +291,15 @@ public final class DialogMenus implements Menus {
         if (team.has(uuid, TeamPermission.INVITE)) {
             buttons.add(menuButton(m("main.invite"), p -> reopen(p, t -> invite(p, t))));
         }
-        if (team.home() != null && teams().homeUnlocked(team) && team.has(uuid, TeamPermission.USE_HOME)) {
-            buttons.add(menuButton(m("main.home"), p -> {
-                DialogKit.close(p);
-                Tasks.entity(p, () -> teams().home(p));
-            }));
+        if (teams().homeUnlocked(team) && team.has(uuid, TeamPermission.USE_HOME)) {
+            buttons.add(menuButton(m("main.home"), p -> reopen(p, t -> {
+                if (teams().maxHomes(t) == 1 && !t.has(p.getUniqueId(), TeamPermission.SET_HOME) && t.home(1) != null) {
+                    DialogKit.close(p);
+                    Tasks.entity(p, () -> teams().home(p, 1));
+                } else {
+                    homes(p, t);
+                }
+            })));
         }
         if (settings().chestEnabled && team.level() >= settings().chestUnlockLevel
                 && team.has(uuid, TeamPermission.ENDER_CHEST)) {
@@ -304,6 +308,8 @@ public final class DialogMenus implements Menus {
                 Tasks.entity(p, () -> plugin.chests().open(p));
             }));
         }
+        buttons.add(menuButton(m("main.allies"), p -> reopen(p, t -> allies(p, t, ""))));
+        buttons.add(menuButton(m("main.waypoint"), p -> reopen(p, t -> waypoint(p, t))));
         if (owner) {
             buttons.add(menuButton(m("main.ranks"), p -> reopen(p, t -> ranks(p, t))));
         }
@@ -538,9 +544,12 @@ public final class DialogMenus implements Menus {
         UUID uuid = player.getUniqueId();
         boolean owner = team.owner().equals(uuid);
         Settings.Level next = settings().nextLevel(team.level());
+        Settings.Level current = settings().level(team.level());
         Component nextText = next == null
-                ? m("bank.maxed")
-                : m("bank.next", p("cost", Format.money(next.cost())), p("members", next.maxMembers()));
+                ? m("bank.maxed", p("members", current.maxMembers()), p("rows", current.chestRows()),
+                p("homes", current.homes()), c("buff", buffName(current)))
+                : m("bank.next", p("cost", Format.money(next.cost())), p("members", next.maxMembers()),
+                p("rows", next.chestRows()), p("homes", next.homes()), c("buff", buffName(next)));
         String balance = plugin.money().enabled() ? Format.money(teams().balance(uuid)) : "-";
 
         List<DialogBody> body = List.of(
@@ -804,12 +813,6 @@ public final class DialogMenus implements Menus {
                 reopen(p, t -> settingsPage(p, t));
             }
         }));
-        if (team.has(player.getUniqueId(), TeamPermission.SET_HOME) && teams().homeUnlocked(team)) {
-            buttons.add(kit.button(m("settings.set-home"), null, p -> Tasks.entity(p, () -> {
-                teams().setHome(p);
-                Tasks.async(() -> reopen(p, t -> settingsPage(p, t)));
-            })));
-        }
         kit.show(player, t("settings.title"), body, inputs, buttons, kit.back(this::open), 2);
     }
 
@@ -877,6 +880,139 @@ public final class DialogMenus implements Menus {
             body.add(kit.text(lines));
         }
         kit.show(player, t("log.title"), body, List.of(), List.of(), kit.back(this::open), 1);
+    }
+
+    // Homes
+
+    private void homes(Player player, Team team) {
+        UUID uuid = player.getUniqueId();
+        int max = teams().maxHomes(team);
+        boolean canSet = team.has(uuid, TeamPermission.SET_HOME);
+        List<DialogBody> body = List.of(kit.item(Material.ENDER_PEARL, m("homes.text", p("count", team.homeCount()), p("max", max))));
+        List<ActionButton> buttons = new ArrayList<>();
+        for (int i = 1; i <= max; i++) {
+            int number = i;
+            dev.m4sh3r.valence.team.TeamHome home = team.home(i);
+            Component tooltip = home == null ? m("homes.empty") : m("homes.where",
+                    p("world", home.world()), p("x", Math.round(home.x())), p("y", Math.round(home.y())), p("z", Math.round(home.z())));
+            buttons.add(kit.button(m(home == null ? "homes.unset" : "homes.go", p("number", number),
+                    c("name", colored("Home " + number, i - 1))), tooltip, p -> {
+                if (home == null) {
+                    reopen(p, t -> homes(p, t));
+                    return;
+                }
+                DialogKit.close(p);
+                Tasks.entity(p, () -> teams().home(p, number));
+            }));
+            if (canSet) {
+                buttons.add(kit.button(m("homes.set", p("number", number)), null, p -> Tasks.entity(p, () -> {
+                    teams().setHome(p, number);
+                    Tasks.async(() -> reopen(p, t -> homes(p, t)));
+                })));
+            }
+        }
+        kit.show(player, t("homes.title"), body, List.of(), buttons, kit.back(this::open), canSet ? 2 : 1);
+    }
+
+    // Allies
+
+    private void allies(Player player, Team team, String note) {
+        UUID uuid = player.getUniqueId();
+        boolean manage = team.has(uuid, TeamPermission.MANAGE_ALLIES);
+        List<Team> allies = teams().allies(team);
+        List<DialogBody> body = new ArrayList<>();
+        body.add(kit.item(Material.LEAD, m("allies.text",
+                p("count", allies.size()), p("max", settings().maxAllies))));
+        for (Team ally : allies) {
+            body.add(kit.item(ally.icon(), m("allies.entry", c("team", ally.displayName()), p("tag", ally.tag()),
+                    p("members", ally.members().size()), p("online", ally.onlineCount()))));
+        }
+        List<DialogInput> inputs = new ArrayList<>();
+        List<ActionButton> buttons = new ArrayList<>();
+        if (manage) {
+            for (Team from : teams().allyRequestsFor(team)) {
+                buttons.add(kit.button(m("allies.accept-team", c("team", from.displayName())), null, p -> {
+                    teams().acceptAlly(p, from.name());
+                    reopen(p, t -> allies(p, t, ""));
+                }));
+            }
+            if (allies.size() < settings().maxAllies) {
+                inputs.add(DialogInput.text("ally", m("allies.input")).maxLength(settings().nameMax).width(220).build());
+                buttons.add(kit.button(m("allies.add"), null, (p, view) -> {
+                    String name = text(view, "ally").trim();
+                    if (!name.isEmpty()) {
+                        teams().requestAlly(p, name);
+                    }
+                    reopen(p, t -> allies(p, t, ""));
+                }));
+            }
+            int index = 0;
+            for (Team ally : allies) {
+                buttons.add(kit.button(m("allies.remove-team", c("team", colored(ally.name(), index++))), null, p -> {
+                    teams().removeAlly(p, ally.name());
+                    reopen(p, t -> allies(p, t, ""));
+                }));
+            }
+        }
+        Component state = m(teams().allyChat(uuid) ? "enabled" : "disabled");
+        buttons.add(kit.button(m("allies.chat", c("state", state)), null, p -> {
+            teams().toggleAllyChat(p);
+            reopen(p, t -> allies(p, t, ""));
+        }));
+        kit.show(player, t("allies.title"), body, inputs, buttons, kit.back(this::open), 2);
+    }
+
+    // Waypoint
+
+    private void waypoint(Player player, Team team) {
+        UUID uuid = player.getUniqueId();
+        boolean canSet = team.has(uuid, TeamPermission.SET_WAYPOINT);
+        dev.m4sh3r.valence.team.TeamHome point = team.waypoint();
+        Component text = point == null ? m("waypoint.page-none") : m("waypoint.page", p("name", team.waypointName()),
+                p("world", point.world()), p("x", Math.round(point.x())), p("y", Math.round(point.y())), p("z", Math.round(point.z())));
+        List<DialogBody> body = List.of(kit.item(Material.COMPASS, text));
+        List<DialogInput> inputs = new ArrayList<>();
+        List<ActionButton> buttons = new ArrayList<>();
+        if (point != null) {
+            boolean following = plugin.waypoints().following(uuid);
+            buttons.add(kit.button(m(following ? "waypoint.stop" : "waypoint.start"), null, p -> {
+                DialogKit.close(p);
+                Tasks.entity(p, () -> plugin.waypoints().toggle(p));
+            }));
+        }
+        if (canSet) {
+            inputs.add(DialogInput.text("name", m("waypoint.input")).maxLength(24)
+                    .initial(team.waypointName()).width(220).build());
+            buttons.add(kit.button(m("waypoint.set-here"), null, (p, view) -> Tasks.entity(p, () -> {
+                plugin.waypoints().set(p, text(view, "name"));
+                Tasks.async(() -> reopen(p, t -> waypoint(p, t)));
+            })));
+            if (point != null) {
+                buttons.add(kit.button(m("waypoint.clear"), null, p -> {
+                    plugin.waypoints().clear(p);
+                    reopen(p, t -> waypoint(p, t));
+                }));
+            }
+        }
+        kit.show(player, t("waypoint.title"), body, inputs, buttons, kit.back(this::open), 2);
+    }
+
+    private Component buffName(Settings.Level level) {
+        if (level.buff() == null) {
+            return m("bank.no-buff");
+        }
+        return m("bank.buff", p("effect", pretty(level.buff().getKey().getKey())), p("level", level.buffAmplifier() + 1));
+    }
+
+    private static String pretty(String key) {
+        StringBuilder out = new StringBuilder();
+        for (String word : key.split("_")) {
+            if (!out.isEmpty()) {
+                out.append(' ');
+            }
+            out.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
+        }
+        return out.toString();
     }
 
     // Shared helpers

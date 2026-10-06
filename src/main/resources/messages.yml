@@ -21,6 +21,7 @@ chat:
   owner-only: "<bad>Only the team owner can do that."
   cant-manage: "<bad>You can only manage members below your rank."
   reloaded: "<good>Configuration reloaded."
+  invalid-icon: "<bad>That item can't be used as an icon."
   invalid-amount: "<bad>Please enter a valid amount."
   no-economy: "<bad>The bank needs Vault and an economy plugin."
   dialogs-unsupported: "<muted>This server version has no dialog menus, so here is the chat menu."
@@ -79,6 +80,7 @@ chat:
     name-invalid: "<bad>Rank names must be 1 to 16 characters."
     limit: "<bad>Your team can't have more than <max> ranks."
     unknown: "<bad>That rank doesn't exist."
+    unknown-permission: "<bad>That permission doesn't exist. Press tab to see them."
 
   transfer:
     done: "<main><hl><player></hl> is now the owner of the team."
@@ -92,6 +94,8 @@ chat:
     received: "<good>You received <money><amount></money> from the team bank."
     not-enough: "<bad>You don't have enough money."
     bank-not-enough: "<bad>The team bank doesn't have enough money."
+    interest: "<main>Your team bank earned <money><amount></money> interest today."
+    weekly: "<main>Weekly Team Top: <team> <main>placed <hl>#<position></hl> and won <money><amount></money>."
     min-deposit: "<bad>The smallest deposit is <money><amount></money>."
 
   level:
@@ -103,14 +107,37 @@ chat:
     saved: "<good>Team settings saved."
 
   home:
-    set: "<good>Team home set."
-    none: "<bad>Your team has no home yet."
+    set: "<good>Team home <hl><number></hl> set."
+    deleted: "<main>Team home <hl><number></hl> removed."
+    none: "<bad>Team home <hl><number></hl> isn't set yet."
+    limit: "<bad>Your team can have <hl><max></hl> homes. More unlock at level <hl><level></hl>."
+    max: "<bad>Your team already has the most homes it can have (<hl><max></hl>)."
     locked: "<bad>Team home unlocks at level <hl><level></hl>."
     disabled: "<bad>Team homes are turned off."
     warmup: "<main>Teleporting in <hl><seconds></hl> seconds. Don't move."
     moved: "<bad>Teleport cancelled because you moved."
     cooldown: "<bad>Wait <hl><seconds></hl> seconds before using this again."
     teleported: "<good>Welcome home."
+
+  ally:
+    self: "<bad>You can't ally your own team."
+    already: "<bad>You are already allied with <team>."
+    limit: "<bad>A team can have at most <hl><max></hl> allies."
+    sent: "<main>Ally request sent to <team>."
+    received: "<team> <main>wants to be allies. <good><accept>[Accept]</accept>"
+    no-request: "<bad>That team hasn't asked to be allies."
+    formed: "<good>You are now allied with <team>."
+    not-allied: "<bad>You aren't allied with <hl><name></hl>."
+    ended: "<bad>The alliance with <team> ended."
+    chat-enabled: "<main>Ally chat <good>on</good>. Your messages go to your team and allies."
+    chat-disabled: "<main>Ally chat <bad>off</bad>."
+
+  waypoint:
+    set: "<hl><player></hl> <main>set the team waypoint <hl><name></hl>."
+    cleared: "<main>Team waypoint removed."
+    none: "<bad>Your team has no waypoint."
+    follow: "<main>Following <hl><name></hl>. Run it again to stop."
+    unfollow: "<main>Stopped following the waypoint."
 
   friendly-fire:
     enabled: "<main>Friendly fire <good>on</good>. You can fight teammates who also have it on."
@@ -122,6 +149,8 @@ chat:
     locked: "<bad>The team ender chest unlocks at level <hl><level></hl>."
     busy: "<bad><player> is using the team ender chest right now."
     returned: "<main>Items from the team ender chest were moved to your inventory."
+    other-server: "<bad>Someone on another server is using the team ender chest."
+    unavailable: "<bad>The team ender chest can't be opened right now. Try again soon."
 
   team-chat:
     enabled: "<main>Team chat <good>on</good>. Your messages now go to your team."
@@ -146,11 +175,16 @@ chat:
     - "<hl><nosc>/team deposit|withdraw <amount></nosc></hl> <muted>use the bank"
     - "<hl><nosc>/team give <player> <amount></nosc></hl> <muted>pay from the bank"
     - "<hl><nosc>/team upgrade</nosc></hl> <muted>level up your team"
-    - "<hl><nosc>/team home|sethome</nosc></hl> <muted>team home"
     - "<hl><nosc>/team top</nosc></hl> <muted>richest teams"
     - "<hl><nosc>/team chat</nosc></hl> <muted>toggle team chat, or use <nosc>/tc</nosc>"
     - "<hl><nosc>/team chest</nosc></hl> <muted>open the team ender chest"
     - "<hl><nosc>/team ff</nosc></hl> <muted>toggle friendly fire for yourself"
+    - "<hl><nosc>/team home|sethome|delhome [number]</nosc></hl> <muted>team homes"
+    - "<hl><nosc>/team ally <team>|accept|remove</nosc></hl> <muted>allies, chat with <nosc>/ac</nosc>"
+    - "<hl><nosc>/team waypoint [set <name>|clear]</nosc></hl> <muted>follow or set the waypoint"
+    - "<hl><nosc>/team profile|players|log|ranks</nosc></hl> <muted>info pages"
+    - "<hl><nosc>/team rank create|delete|perm|icon|position|rename</nosc></hl> <muted>manage ranks"
+    - "<hl><nosc>/team set name|tag|color|icon|open <value></nosc></hl> <muted>team settings"
 
 menu:
   # Lists of buttons, like members and ranks, take these colors in order so no two look the same.
@@ -207,6 +241,8 @@ menu:
     home: "<icon:ender_pearl> <#A3E635>Team Home"
     log: "<icon:book> <#E9A6D8>Activity"
     chest: "<icon:ender_eye> <#2DD4BF>Ender Chest"
+    allies: "<icon:lead> <#93C5FD>Allies"
+    waypoint: "<icon:compass_00> <#FDE68A>Waypoint"
     friendly-fire: "<icon:golden_sword> <#FCA5A5>Friendly Fire <muted>(<state>)"
     chat: "<icon:feather> <#5EEAD4>Team Chat <muted>(<state>)"
     leave: "<icon:barrier> <#FF7A7A>Leave Team"
@@ -262,8 +298,10 @@ menu:
     title: "<money>Team Bank"
     info: "<muted>Balance</muted> <money><bank></money>\n<muted>Your money</muted> <money><balance></money>"
     level: "<muted>Level</muted> <hl><level></hl> <muted>·</muted> <main><next></main>"
-    next: "Next level costs <cost> and gives <members> slots"
-    maxed: "Max level reached"
+    next: "Next level costs <cost>\n<members> members, <rows> chest rows, <homes> homes, <buff>"
+    no-buff: "no buff"
+    buff: "<effect> <level> near teammates"
+    maxed: "Max level reached\n<members> members, <rows> chest rows, <homes> homes, <buff>"
     deposit: "<icon:emerald> <#8CD98C>Deposit"
     withdraw: "<icon:gold_nugget> <#F2C46D>Withdraw"
     give: "<icon:diamond> <#8EC5FF>Give"
@@ -319,6 +357,8 @@ menu:
     set-home: "Set team home"
     use-home: "Use team home"
     edit-settings: "Edit team settings"
+    manage-allies: "Manage allies"
+    set-waypoint: "Set the waypoint"
     ender-chest: "Use the ender chest"
 
   settings:
@@ -328,7 +368,6 @@ menu:
     color: "<main>Color"
     icon: "<main>Icon"
     open: "<main>Anyone can join"
-    set-home: "<icon:ender_pearl> <#A3E635>Set Home Here"
 
   invite:
     title: "<main>Invite a Player"
@@ -355,6 +394,41 @@ menu:
 
   chest:
     title: "<team> <#404040>Ender Chest"
+
+  homes:
+    title: "<main>Team Homes"
+    text: "<main>Your team has <hl><count></hl> of <hl><max></hl> homes set."
+    go: "<icon:ender_pearl> <name>"
+    unset: "<icon:barrier> <muted>Home <number> (not set)"
+    set: "<icon:lime_dye> <#8CD98C>Set Home <number> Here"
+    empty: "<muted>Not set yet"
+    where: "<muted><world> <x>, <y>, <z>"
+
+  allies:
+    title: "<main>Allies"
+    text: "<main>Allies can't hurt each other and share ally chat.\n<muted><count> of <max> allies"
+    entry: "<team> <muted>[<tag>] · <members> members · <online> online"
+    empty: "<muted>No allies yet."
+    input: "<main>Team name"
+    add: "<icon:writable_book> <#8CD98C>Send Request"
+    accept-team: "<icon:lime_dye> <#8CD98C>Accept <team>"
+    remove-team: "<icon:barrier> <#FF7A7A>End <team>"
+    chat: "<icon:feather> <#67E8F9>Ally Chat <muted>(<state>)"
+    request: "<team> <muted>wants to be allies"
+    accept: "<good>[Accept]"
+    remove: "<bad>[End]"
+
+  waypoint:
+    title: "<main>Team Waypoint"
+    page: "<hl><name></hl>\n<muted><world> <x>, <y>, <z>"
+    page-none: "<muted>No waypoint yet."
+    start: "<icon:compass_00> <#FDE68A>Follow"
+    stop: "<icon:barrier> <#FF7A7A>Stop Following"
+    input: "<main>Waypoint name"
+    set-here: "<icon:lime_dye> <#8CD98C>Set Here"
+    clear: "<icon:barrier> <#FF7A7A>Remove"
+    bar: "<team> <muted>·</muted> <hl><arrow></hl> <main><name></main> <muted><distance>m"
+    other-world: "<main><name></main> <muted>is in <world>"
 
   log:
     title: "<main>Activity"

@@ -38,4 +38,4 @@ jobs:
             Valence, a dialog based team plugin by M4sh3r.
 
             Works on Paper and Folia 1.21 to 26.3. Dialog menus need 1.21.7 or newer; older versions get chat menus.
-            Drop the jar into your plugins folder. Vault (or VaultUnlocked on Folia) is needed for the team bank.
+            Drop the jar into your plugins folder. Vault (or VaultUnlocked on Folia) is needed for the team bank. See the README for MySQL network setup.

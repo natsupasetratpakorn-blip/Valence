@@ -10,11 +10,14 @@ import java.util.Comparator;
 import java.util.Deque;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
 public final class Team {
+
+    public static final int MAX_HOMES = 5;
 
     private final UUID id;
     private String name;
@@ -26,7 +29,11 @@ public final class Team {
     private int level = 1;
     private double bank;
     private boolean open;
-    private TeamHome home;
+    private final TeamHome[] homes = new TeamHome[MAX_HOMES];
+    private TeamHome waypoint;
+    private String waypointName = "";
+    private final Set<UUID> allies = ConcurrentHashMap.newKeySet();
+    private long lastInterest;
     private List<String> chest = List.of();
     private final Map<UUID, TeamMember> members = new ConcurrentHashMap<>();
     private final Map<String, TeamRank> ranks = new ConcurrentHashMap<>();
@@ -125,12 +132,52 @@ public final class Team {
         this.open = open;
     }
 
-    public TeamHome home() {
-        return home;
+    /**
+     * Homes are numbered from 1 for players.
+     */
+    public TeamHome home(int number) {
+        return number < 1 || number > MAX_HOMES ? null : homes[number - 1];
     }
 
-    public void home(TeamHome home) {
-        this.home = home;
+    public void home(int number, TeamHome home) {
+        if (number >= 1 && number <= MAX_HOMES) {
+            homes[number - 1] = home;
+        }
+    }
+
+    public int homeCount() {
+        int count = 0;
+        for (TeamHome home : homes) {
+            if (home != null) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    public TeamHome waypoint() {
+        return waypoint;
+    }
+
+    public String waypointName() {
+        return waypointName;
+    }
+
+    public void waypoint(TeamHome waypoint, String name) {
+        this.waypoint = waypoint;
+        this.waypointName = name == null ? "" : name;
+    }
+
+    public Set<UUID> allies() {
+        return allies;
+    }
+
+    public long lastInterest() {
+        return lastInterest;
+    }
+
+    public void lastInterest(long lastInterest) {
+        this.lastInterest = lastInterest;
     }
 
     public List<String> chest() {

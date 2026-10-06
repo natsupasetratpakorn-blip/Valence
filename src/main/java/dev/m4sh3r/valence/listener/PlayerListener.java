@@ -108,13 +108,17 @@ public final class PlayerListener implements Listener {
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onChat(AsyncChatEvent event) {
         Player player = event.getPlayer();
-        if (!plugin.teams().teamChat(player.getUniqueId())) {
-            return;
-        }
-        if (plugin.teams().teamOf(player.getUniqueId()) == null) {
+        boolean team = plugin.teams().teamChat(player.getUniqueId());
+        boolean ally = plugin.teams().allyChat(player.getUniqueId());
+        if ((!team && !ally) || plugin.teams().teamOf(player.getUniqueId()) == null) {
             return;
         }
         event.setCancelled(true);
-        plugin.teams().sendTeamChat(player, PlainTextComponentSerializer.plainText().serialize(event.message()));
+        String text = PlainTextComponentSerializer.plainText().serialize(event.message());
+        if (ally) {
+            plugin.teams().sendAllyChat(player, text);
+        } else {
+            plugin.teams().sendTeamChat(player, text);
+        }
     }
 }

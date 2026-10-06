@@ -12,10 +12,6 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -26,36 +22,53 @@ import java.util.logging.Level;
 
 public final class TeamStorage {
 
+    private static final int DATA_VERSION = 2;
+
     private final Plugin plugin;
     private final Settings settings;
-    private final File folder;
+    private final Backend backend;
+    private final java.util.logging.Logger logger;
 
-    public TeamStorage(Plugin plugin, Settings settings) {
+    public TeamStorage(Plugin plugin, Settings settings, Backend backend) {
         this.plugin = plugin;
         this.settings = settings;
-        this.folder = new File(plugin.getDataFolder(), "teams");
+        this.backend = backend;
+        this.logger = plugin != null ? plugin.getLogger() : java.util.logging.Logger.getLogger("Valence");
     }
 
     public List<Team> loadAll() {
         List<Team> teams = new ArrayList<>();
-        if (!folder.exists() && !folder.mkdirs()) {
-            return teams;
+        List<String> texts;
+        try {
+            texts = backend.loadAll();
+        } catch (Exception e) {
+            throw new IllegalStateException("Could not load teams from storage", e);
         }
-        File[] files = folder.listFiles((dir, name) -> name.endsWith(".yml"));
-        if (files == null) {
-            return teams;
-        }
-        for (File file : files) {
-            try {
-                Team team = read(YamlConfiguration.loadConfiguration(file));
-                if (team != null) {
-                    teams.add(team);
-                }
-            } catch (Exception e) {
-                plugin.getLogger().log(Level.WARNING, "Could not load team file " + file.getName(), e);
+        for (String text : texts) {
+            Team team = parse(text);
+            if (team != null) {
+                teams.add(team);
             }
         }
         return teams;
+    }
+
+    /**
+     * Reads a team from saved text, or returns null when the text is broken.
+     */
+    public Team parse(String text) {
+        try {
+            YamlConfiguration yaml = new YamlConfiguration();
+            yaml.loadFromString(text);
+            return read(yaml);
+        } catch (Exception e) {
+            logger.log(Level.WARNING, "Could not read a saved team", e);
+            return null;
+        }
+    }
+
+    public Backend backend() {
+        return backend;
     }
 
     /**
@@ -73,15 +86,14 @@ public final class TeamStorage {
         yaml.set("level", team.level());
         yaml.set("bank", team.bank());
         yaml.set("open", team.open());
-        TeamHome home = team.home();
-        if (home != null) {
-            yaml.set("home.world", home.world());
-            yaml.set("home.x", home.x());
-            yaml.set("home.y", home.y());
-            yaml.set("home.z", home.z());
-            yaml.set("home.yaw", home.yaw());
-            yaml.set("home.pitch", home.pitch());
+        yaml.set("data-version", DATA_VERSION);
+        for (int i = 1; i <= Team.MAX_HOMES; i++) {
+            writeLocation(yaml, "homes." + i, team.home(i));
         }
+        writeLocation(yaml, "waypoint", team.waypoint());
+        yaml.set("waypoint-name", team.waypointName());
+        yaml.set("allies", team.allies().stream().map(UUID::toString).toList());
+        yaml.set("last-interest", team.lastInterest());
         for (TeamRank rank : team.ranks().values()) {
             String path = "ranks." + rank.id();
             yaml.set(path + ".name", rank.name());
@@ -136,30 +148,27 @@ public final class TeamStorage {
     }
 
     private void write(UUID id, String data) {
-        if (!folder.exists() && !folder.mkdirs()) {
-            plugin.getLogger().warning("Could not create the teams folder.");
-            return;
-        }
-        File target = new File(folder, id + ".yml");
-        File temp = new File(folder, id + ".yml.tmp");
         try {
-            Files.writeString(temp.toPath(), data);
-            Files.move(temp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-        } catch (IOException e) {
-            try {
-                Files.move(temp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            } catch (IOException second) {
-                plugin.getLogger().log(Level.SEVERE, "Could not save team " + id, second);
-            }
+            backend.save(id, data);
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "Could not save team " + id, e);
         }
     }
 
     public synchronized void delete(UUID id) {
         written.put(id, Long.MAX_VALUE);
-        File file = new File(folder, id + ".yml");
-        if (file.exists() && !file.delete()) {
-            plugin.getLogger().warning("Could not delete team file " + file.getName());
+        try {
+            backend.delete(id);
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "Could not delete team " + id, e);
         }
+    }
+
+    /**
+     * A team another server changed or deleted. Our own later saves must not be blocked by its version.
+     */
+    public synchronized void forgetVersion(UUID id) {
+        written.remove(id);
     }
 
     private Team read(YamlConfiguration yaml) {
@@ -180,11 +189,22 @@ public final class TeamStorage {
         team.level(Math.max(1, yaml.getInt("level", 1)));
         team.bank(yaml.getDouble("bank"));
         team.open(yaml.getBoolean("open"));
-        if (yaml.contains("home.world")) {
-            team.home(new TeamHome(yaml.getString("home.world"),
-                    yaml.getDouble("home.x"), yaml.getDouble("home.y"), yaml.getDouble("home.z"),
-                    (float) yaml.getDouble("home.yaw"), (float) yaml.getDouble("home.pitch")));
+        // Files from 1.0 had a single "home".
+        team.home(1, readLocation(yaml, "home"));
+        for (int i = 1; i <= Team.MAX_HOMES; i++) {
+            TeamHome home = readLocation(yaml, "homes." + i);
+            if (home != null) {
+                team.home(i, home);
+            }
         }
+        team.waypoint(readLocation(yaml, "waypoint"), yaml.getString("waypoint-name", ""));
+        for (String ally : yaml.getStringList("allies")) {
+            try {
+                team.allies().add(UUID.fromString(ally));
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+        team.lastInterest(yaml.getLong("last-interest", System.currentTimeMillis()));
 
         ConfigurationSection ranks = yaml.getConfigurationSection("ranks");
         if (ranks != null) {
@@ -203,6 +223,14 @@ public final class TeamStorage {
             }
         }
         ensureBuiltInRanks(team);
+        boolean migrated = false;
+        if (yaml.getInt("data-version", 1) < 2) {
+            // The ender chest arrived after these ranks were made, so give it to every rank once.
+            for (TeamRank rank : team.ranks().values()) {
+                rank.permissions().add(TeamPermission.ENDER_CHEST);
+            }
+            migrated = true;
+        }
 
         ConfigurationSection members = yaml.getConfigurationSection("members");
         if (members != null) {
@@ -233,8 +261,33 @@ public final class TeamStorage {
                 }
             }
         }
-        team.clean();
+        if (migrated) {
+            team.markDirty();
+        } else {
+            team.clean();
+        }
         return team;
+    }
+
+    private static void writeLocation(YamlConfiguration yaml, String path, TeamHome home) {
+        if (home == null) {
+            return;
+        }
+        yaml.set(path + ".world", home.world());
+        yaml.set(path + ".x", home.x());
+        yaml.set(path + ".y", home.y());
+        yaml.set(path + ".z", home.z());
+        yaml.set(path + ".yaw", home.yaw());
+        yaml.set(path + ".pitch", home.pitch());
+    }
+
+    private static TeamHome readLocation(YamlConfiguration yaml, String path) {
+        if (!yaml.contains(path + ".world")) {
+            return null;
+        }
+        return new TeamHome(yaml.getString(path + ".world"),
+                yaml.getDouble(path + ".x"), yaml.getDouble(path + ".y"), yaml.getDouble(path + ".z"),
+                (float) yaml.getDouble(path + ".yaw"), (float) yaml.getDouble(path + ".pitch"));
     }
 
     public static void ensureBuiltInRanks(Team team) {

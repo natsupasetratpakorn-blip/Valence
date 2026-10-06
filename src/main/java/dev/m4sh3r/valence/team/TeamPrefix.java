@@ -55,20 +55,26 @@ public final class TeamPrefix implements Listener {
         for (UUID member : team.members().keySet()) {
             refreshTab(member);
         }
+        plugin.nametags().update(team);
     }
 
     public void forget(Team team) {
         cache.remove(team.id());
+        plugin.nametags().remove(team);
     }
 
     public void reload() {
         cache.clear();
+        for (Team team : plugin.teams().teams()) {
+            plugin.nametags().update(team);
+        }
         for (Player player : Bukkit.getOnlinePlayers()) {
             refreshTab(player.getUniqueId());
         }
     }
 
     public void refreshTab(UUID uuid) {
+        plugin.nametags().player(uuid);
         Player player = Bukkit.getPlayer(uuid);
         if (player == null || !plugin.settings().prefixTab) {
             return;

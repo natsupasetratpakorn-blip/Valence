@@ -7,6 +7,10 @@ import dev.m4sh3r.valence.team.Team;
 import dev.m4sh3r.valence.team.TeamManager;
 import dev.m4sh3r.valence.team.TeamMember;
 import dev.m4sh3r.valence.team.TeamRank;
+import dev.m4sh3r.valence.team.TeamPermission;
+import dev.m4sh3r.valence.config.Settings;
+import dev.m4sh3r.valence.menu.ChatMenus;
+import org.bukkit.Material;
 import dev.m4sh3r.valence.util.Format;
 import dev.m4sh3r.valence.util.Tasks;
 import org.bukkit.Bukkit;
@@ -22,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.EnumSet;
 import java.util.Set;
 import java.util.UUID;
 
@@ -33,9 +38,10 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
     private static final List<String> SUBCOMMANDS = List.of(
             "create", "invite", "accept", "deny", "join", "leave", "disband", "kick", "promote", "demote",
             "setrank", "transfer", "info", "members", "bank", "deposit", "withdraw", "give", "upgrade", "top",
-            "home", "sethome", "chat", "chest", "ff", "help");
+            "home", "sethome", "delhome", "chat", "allychat", "chest", "ff", "ally", "allies", "waypoint",
+            "profile", "players", "log", "ranks", "rank", "set", "help");
 
-    private static final Set<String> MAIN_THREAD = Set.of("deposit", "withdraw", "give", "disband", "home", "sethome", "chest", "enderchest", "ec");
+    private static final Set<String> MAIN_THREAD = Set.of("deposit", "withdraw", "give", "disband", "home", "sethome", "chest", "enderchest", "ec", "waypoint");
 
     private final Valence plugin;
 
@@ -205,8 +211,38 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
             case "upgrade" -> teams().upgrade(player);
             case "chest", "enderchest", "ec" -> plugin.chests().open(player);
             case "ff", "friendlyfire", "pvp" -> teams().toggleFriendlyFire(player);
-            case "home" -> teams().home(player);
-            case "sethome" -> teams().setHome(player);
+            case "home" -> teams().home(player, number(args, 1));
+            case "sethome" -> teams().setHome(player, number(args, 1));
+            case "delhome" -> teams().deleteHome(player, number(args, 1));
+            case "allychat" -> {
+                if (args.length > 1) {
+                    teams().sendAllyChat(player, String.join(" ", Arrays.copyOfRange(args, 1, args.length)));
+                } else {
+                    teams().toggleAllyChat(player);
+                }
+            }
+            case "ally" -> ally(player, args);
+            case "allies" -> chat().allies(player);
+            case "waypoint" -> {
+                if (args.length > 1 && args[1].equalsIgnoreCase("set")) {
+                    plugin.waypoints().set(player, args.length > 2 ? String.join(" ", Arrays.copyOfRange(args, 2, args.length)) : null);
+                } else if (args.length > 1 && args[1].equalsIgnoreCase("clear")) {
+                    plugin.waypoints().clear(player);
+                } else {
+                    plugin.waypoints().toggle(player);
+                }
+            }
+            case "profile" -> {
+                UUID target = args.length > 1 ? member(player, args[1]) : player.getUniqueId();
+                if (target != null) {
+                    chat().profile(player, target);
+                }
+            }
+            case "players" -> chat().players(player);
+            case "log" -> chat().log(player);
+            case "ranks" -> chat().ranks(player);
+            case "rank" -> rank(player, args);
+            case "set" -> set(player, args);
             case "chat" -> {
                 if (args.length > 1) {
                     teams().sendTeamChat(player, String.join(" ", Arrays.copyOfRange(args, 1, args.length)));
@@ -216,6 +252,138 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
             }
             default -> msg().sendList(player, "help");
         }
+    }
+
+    private ChatMenus chat() {
+        return plugin.chatViews();
+    }
+
+    private static int number(String[] args, int index) {
+        if (args.length <= index) {
+            return 1;
+        }
+        try {
+            return Integer.parseInt(args[index]);
+        } catch (NumberFormatException e) {
+            return 1;
+        }
+    }
+
+    private void ally(Player player, String[] args) {
+        if (args.length < 2) {
+            chat().allies(player);
+            return;
+        }
+        switch (args[1].toLowerCase(Locale.ROOT)) {
+            case "accept" -> {
+                if (args.length > 2) {
+                    teams().acceptAlly(player, args[2]);
+                } else {
+                    usage(player);
+                }
+            }
+            case "remove", "end" -> {
+                if (args.length > 2) {
+                    teams().removeAlly(player, args[2]);
+                } else {
+                    usage(player);
+                }
+            }
+            default -> teams().requestAlly(player, args[1]);
+        }
+    }
+
+    private void rank(Player player, String[] args) {
+        Team team = teams().requireTeam(player);
+        if (team == null) {
+            return;
+        }
+        if (args.length < 3) {
+            chat().ranks(player);
+            return;
+        }
+        String action = args[1].toLowerCase(Locale.ROOT);
+        if (action.equals("create")) {
+            int position = args.length > 3 ? number(args, 3) : 50;
+            teams().createRank(player, args[2], Material.IRON_HELMET, position, EnumSet.noneOf(TeamPermission.class));
+            return;
+        }
+        TeamRank rank = findRank(team, args[2]);
+        if (rank == null) {
+            msg().send(player, "rank.unknown");
+            return;
+        }
+        switch (action) {
+            case "delete" -> teams().deleteRank(player, rank.id());
+            case "perm" -> {
+                TeamPermission permission = args.length > 3 ? TeamPermission.fromKey(args[3]) : null;
+                if (permission == null) {
+                    msg().send(player, "rank.unknown-permission");
+                    return;
+                }
+                Set<TeamPermission> permissions = EnumSet.noneOf(TeamPermission.class);
+                permissions.addAll(rank.permissions());
+                boolean on = args.length > 4 ? args[4].equalsIgnoreCase("on") || args[4].equalsIgnoreCase("true") : !permissions.contains(permission);
+                if (on) {
+                    permissions.add(permission);
+                } else {
+                    permissions.remove(permission);
+                }
+                teams().updateRank(player, rank.id(), rank.name(), rank.icon(), rank.weight(), permissions);
+            }
+            case "icon" -> teams().updateRank(player, rank.id(), rank.name(),
+                    Settings.material(args.length > 3 ? args[3] : null, rank.icon()), rank.weight(), rank.permissions());
+            case "position" -> teams().updateRank(player, rank.id(), rank.name(), rank.icon(), number(args, 3), rank.permissions());
+            case "rename" -> {
+                if (args.length > 3) {
+                    teams().updateRank(player, rank.id(), String.join(" ", Arrays.copyOfRange(args, 3, args.length)),
+                            rank.icon(), rank.weight(), rank.permissions());
+                }
+            }
+            default -> chat().ranks(player);
+        }
+    }
+
+    private static TeamRank findRank(Team team, String name) {
+        for (TeamRank rank : team.ranks().values()) {
+            if (rank.name().equalsIgnoreCase(name) || rank.id().equalsIgnoreCase(name)) {
+                return rank;
+            }
+        }
+        return null;
+    }
+
+    private void set(Player player, String[] args) {
+        Team team = teams().requireTeam(player);
+        if (team == null) {
+            return;
+        }
+        if (args.length < 3) {
+            msg().sendRaw(player, "<muted><nosc>/team set name|tag|color|icon|open <value></nosc>");
+            return;
+        }
+        String value = args[2];
+        String name = team.name();
+        String tag = team.tag();
+        String color = team.color();
+        Material icon = team.icon();
+        boolean open = team.open();
+        switch (args[1].toLowerCase(Locale.ROOT)) {
+            case "name" -> name = value;
+            case "tag" -> tag = value;
+            case "color" -> color = value;
+            case "icon" -> icon = Settings.material(value, null);
+            case "open" -> open = value.equalsIgnoreCase("true") || value.equalsIgnoreCase("on") || value.equalsIgnoreCase("yes");
+            default -> {
+                msg().sendRaw(player, "<muted><nosc>/team set name|tag|color|icon|open <value></nosc>");
+                return;
+            }
+        }
+        if (icon == null) {
+            msg().send(player, "invalid-icon");
+            return;
+        }
+        teams().updateSettings(player, name, tag, color, icon, open);
     }
 
     private void usage(Player player) {
@@ -270,7 +438,25 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
             msg().send(sender, "disband.done", c("team", team.displayName()));
             return;
         }
-        msg().sendRaw(sender, "<muted>/team admin disband <team>");
+        if (args.length >= 4 && (args[1].equalsIgnoreCase("setlevel") || args[1].equalsIgnoreCase("setbank"))) {
+            Team team = teams().byName(args[2]);
+            if (team == null) {
+                msg().send(sender, "team-not-found", p("name", args[2]));
+                return;
+            }
+            try {
+                if (args[1].equalsIgnoreCase("setlevel")) {
+                    teams().adminSetLevel(team, Integer.parseInt(args[3]));
+                } else {
+                    teams().adminSetBank(team, Double.parseDouble(args[3]));
+                }
+                msg().send(sender, "settings.saved");
+            } catch (NumberFormatException e) {
+                msg().send(sender, "invalid-amount");
+            }
+            return;
+        }
+        msg().sendRaw(sender, "<muted><nosc>/team admin disband|setlevel|setbank <team> [value]</nosc>");
     }
 
     @Override
@@ -292,7 +478,22 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
                         }
                     }
                 }
-                case "kick", "promote", "demote", "transfer", "setrank" -> {
+                case "ally" -> {
+                    options.add("accept");
+                    options.add("remove");
+                    teams().teams().forEach(any -> options.add(any.name()));
+                }
+                case "waypoint" -> options.addAll(List.of("set", "clear"));
+                case "rank" -> options.addAll(List.of("create", "delete", "perm", "icon", "position", "rename"));
+                case "set" -> options.addAll(List.of("name", "tag", "color", "icon", "open"));
+                case "home", "sethome", "delhome" -> {
+                    if (team != null) {
+                        for (int i = 1; i <= Math.max(1, teams().maxHomes(team)); i++) {
+                            options.add(String.valueOf(i));
+                        }
+                    }
+                }
+                case "kick", "promote", "demote", "transfer", "setrank", "profile" -> {
                     if (team != null) {
                         for (TeamMember member : team.members().values()) {
                             if (!member.uuid().equals(player.getUniqueId())) {
@@ -320,9 +521,36 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
                 }
             }
         } else if (args.length == 2 && args[0].equalsIgnoreCase("admin")) {
-            options.add("disband");
+            options.addAll(List.of("disband", "setlevel", "setbank"));
         } else if (args.length == 3 && args[0].equalsIgnoreCase("admin")) {
             teams().teams().forEach(any -> options.add(any.name()));
+        } else if (args.length == 3 && args[0].equalsIgnoreCase("ally") && sender instanceof Player player) {
+            Team team = teams().teamOf(player.getUniqueId());
+            if (team != null && args[1].equalsIgnoreCase("accept")) {
+                teams().allyRequestsFor(team).forEach(t -> options.add(t.name()));
+            } else if (team != null && args[1].equalsIgnoreCase("remove")) {
+                teams().allies(team).forEach(t -> options.add(t.name()));
+            }
+        } else if (args.length == 3 && args[0].equalsIgnoreCase("set")) {
+            switch (args[1].toLowerCase(Locale.ROOT)) {
+                case "color" -> options.addAll(plugin.settings().colors.keySet());
+                case "icon" -> plugin.settings().icons.forEach(m -> options.add(m.name().toLowerCase(Locale.ROOT)));
+                case "open" -> options.addAll(List.of("true", "false"));
+                default -> {
+                }
+            }
+        } else if (args.length == 3 && args[0].equalsIgnoreCase("rank") && !args[1].equalsIgnoreCase("create")
+                && sender instanceof Player player) {
+            Team team = teams().teamOf(player.getUniqueId());
+            if (team != null) {
+                team.sortedRanks().forEach(r -> options.add(r.name()));
+            }
+        } else if (args.length == 4 && args[0].equalsIgnoreCase("rank") && args[1].equalsIgnoreCase("perm")) {
+            for (TeamPermission permission : TeamPermission.values()) {
+                options.add(permission.key());
+            }
+        } else if (args.length == 5 && args[0].equalsIgnoreCase("rank") && args[1].equalsIgnoreCase("perm")) {
+            options.addAll(List.of("on", "off"));
         } else if (args.length == 3 && args[0].equalsIgnoreCase("setrank") && sender instanceof Player player) {
             Team team = teams().teamOf(player.getUniqueId());
             if (team != null) {

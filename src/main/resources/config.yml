@@ -19,32 +19,64 @@ levels:
   1:
     cost: 0
     max-members: 4
+    chest-rows: 1
+    homes: 0
   2:
     cost: 25000
     max-members: 6
+    chest-rows: 2
+    homes: 1
   3:
     cost: 75000
     max-members: 8
+    chest-rows: 3
+    homes: 1
+    buff:
+      effect: haste
+      level: 1
   4:
     cost: 150000
     max-members: 10
+    chest-rows: 4
+    homes: 2
+    buff:
+      effect: haste
+      level: 1
   5:
     cost: 300000
     max-members: 14
+    chest-rows: 6
+    homes: 3
+    buff:
+      effect: haste
+      level: 2
+
+level-buff-radius: 24
 
 bank:
   currency-symbol: "$"
   min-deposit: 10
   log-size: 50
+  daily-interest:
+    percent: 1.0
+    max: 5000
+
+weekly-rewards:
+  enabled: true
+  top-teams:
+    - 10000
+    - 5000
+    - 2500
+
+allies:
+  max: 3
 
 ender-chest:
   enabled: true
-  rows: 3
   unlock-level: 1
 
 home:
   enabled: true
-  unlock-level: 2
   warmup-seconds: 3
   cooldown-seconds: 30
 
@@ -52,10 +84,12 @@ prefix:
   format: "<team_icon> <team_color><team_tag></team_color> "
   chat: true
   tab-list: true
+  above-head: true
 
 chat:
   small-caps: true
   team-chat-format: "<#8a8f98>[<team_color><team_tag></team_color>] <#e6e6e6><player></#e6e6e6> <#5c616a>»</#5c616a> <#cde4ff><message>"
+  ally-chat-format: "<#8a8f98>[<#93c5fd>Ally</#93c5fd>] [<team_color><team_tag></team_color>] <#e6e6e6><player></#e6e6e6> <#5c616a>»</#5c616a> <#dbeafe><message>"
 
 menu:
   no-team-icon: EMERALD
@@ -63,6 +97,19 @@ menu:
   leaderboard-size: 10
 
 autosave-minutes: 5
+
+storage:
+  type: file
+  main-server: true
+  mysql:
+    host: localhost
+    port: 3306
+    database: valence
+    user: root
+    password: ""
+    ssl: false
+    table-prefix: valence_
+    sync-seconds: 5
 
 colors:
   Red: "#FF6B6B"

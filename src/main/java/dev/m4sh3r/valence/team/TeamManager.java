@@ -215,6 +215,7 @@ public final class TeamManager {
 
         Team team = new Team(UUID.randomUUID(), name, tag, color, icon, player.getUniqueId(), System.currentTimeMillis());
         team.color(color, settings().color(color));
+        team.lastInterest(System.currentTimeMillis());
         TeamStorage.ensureBuiltInRanks(team);
         TeamMember owner = new TeamMember(player.getUniqueId(), player.getName(), TeamRank.OWNER, System.currentTimeMillis());
         applySkin(owner, player);
@@ -443,6 +444,18 @@ public final class TeamManager {
         return true;
     }
 
+    public synchronized void adminSetLevel(Team team, int level) {
+        team.level(Math.max(1, Math.min(level, settings().levels.lastKey())));
+        team.markDirty();
+        plugin.prefixes().refresh(team);
+    }
+
+    public synchronized void adminSetBank(Team team, double amount) {
+        team.bank(amount);
+        team.markDirty();
+        topCacheTime = 0;
+    }
+
     public synchronized void adminDisband(Team team) {
         plugin.chests().disband(team, Bukkit.getPlayer(team.owner()));
         broadcast(team, msg().chat("disband.broadcast"), null);
@@ -452,9 +465,21 @@ public final class TeamManager {
     private void delete(Team team) {
         teams.remove(team.id());
         topCacheTime = 0;
+        for (UUID allyId : team.allies()) {
+            Team ally = teams.get(allyId);
+            if (ally != null) {
+                ally.allies().remove(team.id());
+                ally.markDirty();
+            }
+        }
+        allyRequests.remove(team.id());
+        for (Map<UUID, Long> map : allyRequests.values()) {
+            map.remove(team.id());
+        }
         for (UUID member : team.members().keySet()) {
             playerTeams.remove(member, team.id());
             teamChat.remove(member);
+            allyChat.remove(member);
             plugin.prefixes().refreshTab(member);
         }
         plugin.prefixes().forget(team);
@@ -818,42 +843,76 @@ public final class TeamManager {
         return true;
     }
 
-    public boolean homeUnlocked(Team team) {
-        return settings().homeEnabled && team.level() >= settings().homeUnlockLevel;
+    public int maxHomes(Team team) {
+        return settings().homeEnabled ? settings().level(team.level()).homes() : 0;
     }
 
-    public synchronized boolean setHome(Player actor) {
+    public boolean homeUnlocked(Team team) {
+        return maxHomes(team) > 0;
+    }
+
+    public synchronized boolean setHome(Player actor, int number) {
         Team team = requireTeam(actor);
-        if (team == null || !require(actor, team, TeamPermission.SET_HOME) || !checkHomeAvailable(actor, team)) {
+        if (team == null || !require(actor, team, TeamPermission.SET_HOME) || !checkHomeAvailable(actor, team, number)) {
             return false;
         }
-        team.home(TeamHome.of(actor.getLocation()));
-        team.log(actor.getName() + " set the team home", settings().logSize);
-        msg().send(actor, "home.set");
+        team.home(number, TeamHome.of(actor.getLocation()));
+        team.log(actor.getName() + " set team home " + number, settings().logSize);
+        msg().send(actor, "home.set", p("number", number));
         return true;
     }
 
-    private boolean checkHomeAvailable(Player actor, Team team) {
+    public synchronized boolean deleteHome(Player actor, int number) {
+        Team team = requireTeam(actor);
+        if (team == null || !require(actor, team, TeamPermission.SET_HOME)) {
+            return false;
+        }
+        team.home(number, null);
+        team.markDirty();
+        msg().send(actor, "home.deleted", p("number", number));
+        return true;
+    }
+
+    private boolean checkHomeAvailable(Player actor, Team team, int number) {
         if (!settings().homeEnabled) {
             msg().send(actor, "home.disabled");
             return false;
         }
-        if (team.level() < settings().homeUnlockLevel) {
-            msg().send(actor, "home.locked", p("level", settings().homeUnlockLevel));
+        int max = maxHomes(team);
+        if (max <= 0) {
+            msg().send(actor, "home.locked", p("level", firstLevelWithHomes(1)));
+            return false;
+        }
+        if (number < 1 || number > max) {
+            int level = firstLevelWithHomes(number);
+            if (level > team.level()) {
+                msg().send(actor, "home.limit", p("max", max), p("level", level));
+            } else {
+                msg().send(actor, "home.max", p("max", max));
+            }
             return false;
         }
         return true;
     }
 
-    public boolean home(Player actor) {
+    private int firstLevelWithHomes(int homes) {
+        for (Settings.Level level : settings().levels.values()) {
+            if (level.homes() >= homes) {
+                return level.level();
+            }
+        }
+        return -1;
+    }
+
+    public boolean home(Player actor, int number) {
         Team team = requireTeam(actor);
-        if (team == null || !require(actor, team, TeamPermission.USE_HOME) || !checkHomeAvailable(actor, team)) {
+        if (team == null || !require(actor, team, TeamPermission.USE_HOME) || !checkHomeAvailable(actor, team, number)) {
             return false;
         }
-        TeamHome home = team.home();
+        TeamHome home = team.home(number);
         Location target = home == null ? null : home.toLocation();
         if (target == null) {
-            msg().send(actor, "home.none");
+            msg().send(actor, "home.none", p("number", number));
             return false;
         }
         long now = System.currentTimeMillis();
@@ -912,12 +971,175 @@ public final class TeamManager {
         if (team == null) {
             return true;
         }
+        if (allied(team, teamOf(victim))) {
+            return false;
+        }
         TeamMember victimMember = team.member(victim);
         if (victimMember == null) {
             return true;
         }
         TeamMember attackerMember = team.member(attacker);
         return attackerMember.friendlyFire() && victimMember.friendlyFire();
+    }
+
+    // Allies
+
+    private final Map<UUID, Map<UUID, Long>> allyRequests = new ConcurrentHashMap<>();
+    private final Set<UUID> allyChat = ConcurrentHashMap.newKeySet();
+
+    public boolean allied(Team a, Team b) {
+        return a != null && b != null && a != b && a.allies().contains(b.id());
+    }
+
+    public List<Team> allies(Team team) {
+        List<Team> list = new ArrayList<>();
+        for (UUID id : team.allies()) {
+            Team ally = teams.get(id);
+            if (ally != null) {
+                list.add(ally);
+            }
+        }
+        list.sort(Comparator.comparing(t -> t.name().toLowerCase(Locale.ROOT)));
+        return list;
+    }
+
+    public List<Team> allyRequestsFor(Team team) {
+        List<Team> list = new ArrayList<>();
+        Map<UUID, Long> map = allyRequests.get(team.id());
+        if (map == null) {
+            return list;
+        }
+        long now = System.currentTimeMillis();
+        map.values().removeIf(expires -> expires < now);
+        for (UUID id : map.keySet()) {
+            Team from = teams.get(id);
+            if (from != null) {
+                list.add(from);
+            }
+        }
+        return list;
+    }
+
+    public synchronized boolean requestAlly(Player actor, String targetName) {
+        Team team = requireTeam(actor);
+        if (team == null || !require(actor, team, TeamPermission.MANAGE_ALLIES)) {
+            return false;
+        }
+        Team target = byName(targetName);
+        if (target == null) {
+            msg().send(actor, "team-not-found", p("name", targetName));
+            return false;
+        }
+        if (target == team) {
+            msg().send(actor, "ally.self");
+            return false;
+        }
+        if (allied(team, target)) {
+            msg().send(actor, "ally.already", c("team", target.displayName()));
+            return false;
+        }
+        // They already asked us, so this request is really a yes.
+        Map<UUID, Long> ours = allyRequests.get(team.id());
+        if (ours != null && ours.containsKey(target.id())) {
+            return acceptAlly(actor, target.name());
+        }
+        if (team.allies().size() >= settings().maxAllies) {
+            msg().send(actor, "ally.limit", p("max", settings().maxAllies));
+            return false;
+        }
+        allyRequests.computeIfAbsent(target.id(), k -> new ConcurrentHashMap<>())
+                .put(team.id(), System.currentTimeMillis() + settings().inviteExpireSeconds * 1000L);
+        msg().send(actor, "ally.sent", c("team", target.displayName()));
+        Component notice = msg().chat("ally.received", c("team", team.displayName()),
+                TagResolver.resolver("accept", Tag.styling(ClickEvent.runCommand("/team ally accept " + team.name()))));
+        for (UUID uuid : target.members().keySet()) {
+            Player online = Bukkit.getPlayer(uuid);
+            if (online != null && target.has(uuid, TeamPermission.MANAGE_ALLIES)) {
+                online.sendMessage(notice);
+            }
+        }
+        return true;
+    }
+
+    public synchronized boolean acceptAlly(Player actor, String fromName) {
+        Team team = requireTeam(actor);
+        if (team == null || !require(actor, team, TeamPermission.MANAGE_ALLIES)) {
+            return false;
+        }
+        Team from = byName(fromName);
+        Map<UUID, Long> requests = allyRequests.get(team.id());
+        Long expires = from == null || requests == null ? null : requests.get(from.id());
+        if (expires == null || expires < System.currentTimeMillis()) {
+            msg().send(actor, "ally.no-request");
+            return false;
+        }
+        if (team.allies().size() >= settings().maxAllies || from.allies().size() >= settings().maxAllies) {
+            msg().send(actor, "ally.limit", p("max", settings().maxAllies));
+            return false;
+        }
+        requests.remove(from.id());
+        team.allies().add(from.id());
+        from.allies().add(team.id());
+        team.log(actor.getName() + " made an alliance with " + from.name(), settings().logSize);
+        from.log("Alliance made with " + team.name(), settings().logSize);
+        broadcast(team, msg().chat("ally.formed", c("team", from.displayName())), null);
+        broadcast(from, msg().chat("ally.formed", c("team", team.displayName())), null);
+        return true;
+    }
+
+    public synchronized boolean removeAlly(Player actor, String allyName) {
+        Team team = requireTeam(actor);
+        if (team == null || !require(actor, team, TeamPermission.MANAGE_ALLIES)) {
+            return false;
+        }
+        Team ally = byName(allyName);
+        if (ally == null || !allied(team, ally)) {
+            msg().send(actor, "ally.not-allied", p("name", allyName));
+            return false;
+        }
+        team.allies().remove(ally.id());
+        ally.allies().remove(team.id());
+        ally.markDirty();
+        team.log(actor.getName() + " ended the alliance with " + ally.name(), settings().logSize);
+        ally.log(team.name() + " ended the alliance", settings().logSize);
+        broadcast(team, msg().chat("ally.ended", c("team", ally.displayName())), null);
+        broadcast(ally, msg().chat("ally.ended", c("team", team.displayName())), null);
+        return true;
+    }
+
+    public boolean allyChat(UUID uuid) {
+        return allyChat.contains(uuid);
+    }
+
+    public void toggleAllyChat(Player player) {
+        if (requireTeam(player) == null) {
+            return;
+        }
+        if (allyChat.remove(player.getUniqueId())) {
+            msg().send(player, "ally.chat-disabled");
+        } else {
+            teamChat.remove(player.getUniqueId());
+            allyChat.add(player.getUniqueId());
+            msg().send(player, "ally.chat-enabled");
+        }
+    }
+
+    public void sendAllyChat(Player player, String message) {
+        Team team = requireTeam(player);
+        if (team == null) {
+            return;
+        }
+        Component line = msg().parse(settings().allyChatFormat,
+                Placeholder.styling("team_color", team.textColor()),
+                p("team_tag", team.tag()),
+                p("team", team.name()),
+                p("player", player.getName()),
+                p("message", message));
+        broadcast(team, line, null);
+        for (Team ally : allies(team)) {
+            broadcast(ally, line, null);
+        }
+        Bukkit.getConsoleSender().sendMessage(line);
     }
 
     // Chat
@@ -929,6 +1151,7 @@ public final class TeamManager {
         if (teamChat.remove(player.getUniqueId())) {
             msg().send(player, "team-chat.disabled");
         } else {
+            allyChat.remove(player.getUniqueId());
             teamChat.add(player.getUniqueId());
             msg().send(player, "team-chat.enabled");
         }
@@ -1099,6 +1322,76 @@ public final class TeamManager {
     }
 
     private final Set<UUID> writeQueued = ConcurrentHashMap.newKeySet();
+
+    /**
+     * Pulls in teams that other servers on the network changed. Runs off the main thread.
+     */
+    public void syncFromNetwork() {
+        Map<UUID, String> changes;
+        try {
+            changes = plugin.storage().backend().changes();
+        } catch (Exception e) {
+            plugin.getLogger().warning("Could not check the database for team changes: " + e.getMessage());
+            return;
+        }
+        for (Map.Entry<UUID, String> change : changes.entrySet()) {
+            applyRemote(change.getKey(), change.getValue());
+        }
+    }
+
+    public synchronized void applyRemote(UUID id, String data) {
+        Team old = teams.get(id);
+        Team fresh = data == null ? null : plugin.storage().parse(data);
+        plugin.storage().forgetVersion(id);
+        if (old != null) {
+            teams.remove(id);
+            for (UUID member : old.members().keySet()) {
+                playerTeams.remove(member, id);
+            }
+            if (fresh == null) {
+                plugin.prefixes().forget(old);
+                for (UUID member : old.members().keySet()) {
+                    teamChat.remove(member);
+                    allyChat.remove(member);
+                    plugin.prefixes().refreshTab(member);
+                }
+            }
+        }
+        if (fresh != null) {
+            fresh.color(fresh.color(), settings().color(fresh.color()));
+            fresh.clean();
+            teams.put(id, fresh);
+            for (UUID member : fresh.members().keySet()) {
+                playerTeams.put(member, id);
+            }
+            if (old != null) {
+                for (UUID member : old.members().keySet()) {
+                    if (!fresh.members().containsKey(member)) {
+                        plugin.prefixes().refreshTab(member);
+                    }
+                }
+            }
+            plugin.prefixes().refresh(fresh);
+        }
+        topCacheTime = 0;
+    }
+
+    /**
+     * Writes one team right now on the calling thread. Only call this off the main thread.
+     */
+    public void writeBlocking(Team team) {
+        String data;
+        long version;
+        synchronized (this) {
+            if (teams.get(team.id()) != team) {
+                return;
+            }
+            team.clean();
+            data = plugin.storage().snapshot(team);
+            version = plugin.storage().nextVersion();
+        }
+        plugin.storage().write(team.id(), data, version);
+    }
 
     /**
      * Writes one team to disk right away, off the main thread. Calls that pile up become one write.

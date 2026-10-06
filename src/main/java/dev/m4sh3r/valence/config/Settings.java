@@ -1,5 +1,6 @@
 package dev.m4sh3r.valence.config;
 
+import dev.m4sh3r.valence.team.Team;
 import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
@@ -14,7 +15,8 @@ import java.util.TreeMap;
 
 public final class Settings {
 
-    public record Level(int level, double cost, int maxMembers) {
+    public record Level(int level, double cost, int maxMembers, int chestRows, int homes,
+                        org.bukkit.potion.PotionEffectType buff, int buffAmplifier) {
     }
 
     public int nameMin;
@@ -33,20 +35,37 @@ public final class Settings {
     public int logSize;
 
     public boolean chestEnabled;
-    public int chestRows;
     public int chestUnlockLevel;
 
     public boolean homeEnabled;
-    public int homeUnlockLevel;
+    public int buffRadius;
     public int homeWarmup;
     public int homeCooldown;
 
     public String prefixFormat;
     public boolean prefixChat;
     public boolean prefixTab;
+    public boolean prefixNametag;
+
+    public double interestPercent;
+    public double interestMax;
+    public boolean weeklyEnabled;
+    public List<Double> weeklyRewards = List.of();
+    public boolean mainServer;
+    public String storageType;
+    public String mysqlHost;
+    public int mysqlPort;
+    public String mysqlDatabase;
+    public String mysqlUser;
+    public String mysqlPassword;
+    public boolean mysqlSsl;
+    public String mysqlPrefix;
+    public int syncSeconds;
 
     public boolean smallCaps;
     public String teamChatFormat;
+    public String allyChatFormat;
+    public int maxAllies;
 
     public Material noTeamIcon;
     public String dateFormat;
@@ -75,13 +94,17 @@ public final class Settings {
                     int level = Integer.parseInt(key);
                     levels.put(level, new Level(level,
                             levelSection.getDouble(key + ".cost"),
-                            levelSection.getInt(key + ".max-members", 4)));
+                            levelSection.getInt(key + ".max-members", 4),
+                            Math.max(1, Math.min(6, levelSection.getInt(key + ".chest-rows", 3))),
+                            Math.max(0, Math.min(Team.MAX_HOMES, levelSection.getInt(key + ".homes", 1))),
+                            effect(levelSection.getString(key + ".buff.effect")),
+                            Math.max(0, levelSection.getInt(key + ".buff.level", 1) - 1)));
                 } catch (NumberFormatException ignored) {
                 }
             }
         }
         if (levels.isEmpty()) {
-            levels.put(1, new Level(1, 0, 4));
+            levels.put(1, new Level(1, 0, 4, 3, 1, null, 0));
         }
 
         currencySymbol = config.getString("bank.currency-symbol", "$");
@@ -89,20 +112,37 @@ public final class Settings {
         logSize = config.getInt("bank.log-size", 50);
 
         chestEnabled = config.getBoolean("ender-chest.enabled", true);
-        chestRows = Math.max(1, Math.min(6, config.getInt("ender-chest.rows", 3)));
         chestUnlockLevel = config.getInt("ender-chest.unlock-level", 1);
 
         homeEnabled = config.getBoolean("home.enabled", true);
-        homeUnlockLevel = config.getInt("home.unlock-level", 1);
+        buffRadius = Math.max(1, config.getInt("level-buff-radius", 24));
         homeWarmup = config.getInt("home.warmup-seconds", 3);
         homeCooldown = config.getInt("home.cooldown-seconds", 30);
 
         prefixFormat = config.getString("prefix.format", "<team_icon> <team_color><team_tag></team_color> ");
         prefixChat = config.getBoolean("prefix.chat", true);
         prefixTab = config.getBoolean("prefix.tab-list", true);
+        prefixNametag = config.getBoolean("prefix.above-head", true);
+
+        interestPercent = Math.max(0, config.getDouble("bank.daily-interest.percent", 1.0));
+        interestMax = Math.max(0, config.getDouble("bank.daily-interest.max", 5000));
+        weeklyEnabled = config.getBoolean("weekly-rewards.enabled", true);
+        weeklyRewards = config.getDoubleList("weekly-rewards.top-teams");
+        mainServer = config.getBoolean("storage.main-server", true);
+        storageType = config.getString("storage.type", "file");
+        mysqlHost = config.getString("storage.mysql.host", "localhost");
+        mysqlPort = config.getInt("storage.mysql.port", 3306);
+        mysqlDatabase = config.getString("storage.mysql.database", "valence");
+        mysqlUser = config.getString("storage.mysql.user", "root");
+        mysqlPassword = config.getString("storage.mysql.password", "");
+        mysqlSsl = config.getBoolean("storage.mysql.ssl", false);
+        mysqlPrefix = config.getString("storage.mysql.table-prefix", "valence_");
+        syncSeconds = Math.max(2, config.getInt("storage.mysql.sync-seconds", 5));
 
         smallCaps = config.getBoolean("chat.small-caps", true);
         teamChatFormat = config.getString("chat.team-chat-format", "[<team_tag>] <player>: <message>");
+        allyChatFormat = config.getString("chat.ally-chat-format", "[Ally] [<team_tag>] <player>: <message>");
+        maxAllies = Math.max(0, config.getInt("allies.max", 3));
 
         noTeamIcon = material(config.getString("menu.no-team-icon"), Material.EMERALD);
         dateFormat = config.getString("menu.date-format", "MMM d, yyyy");
@@ -130,7 +170,7 @@ public final class Settings {
         icons.clear();
         for (String name : config.getStringList("icons")) {
             Material material = material(name, null);
-            if (material != null && material.isItem() && !icons.contains(material)) {
+            if (material != null && isItem(material) && !icons.contains(material)) {
                 icons.add(material);
             }
         }
@@ -166,11 +206,35 @@ public final class Settings {
         return null;
     }
 
+    @SuppressWarnings("deprecation")
+    private static org.bukkit.potion.PotionEffectType effect(String name) {
+        if (name == null || name.isBlank()) {
+            return null;
+        }
+        try {
+            org.bukkit.potion.PotionEffectType type = org.bukkit.Registry.EFFECT.get(
+                    org.bukkit.NamespacedKey.minecraft(name.toLowerCase(Locale.ROOT).replace("minecraft:", "")));
+            return type != null ? type : org.bukkit.potion.PotionEffectType.getByName(name);
+        } catch (Throwable e) {
+            // No server around, like in tests.
+            return null;
+        }
+    }
+
     public static Material material(String name, Material fallback) {
         if (name == null) {
             return fallback;
         }
         Material material = Material.matchMaterial(name);
-        return material != null && material.isItem() ? material : fallback;
+        return material != null && isItem(material) ? material : fallback;
+    }
+
+    private static boolean isItem(Material material) {
+        try {
+            return material.isItem();
+        } catch (Throwable e) {
+            // No server around, like in tests. Assume the config is right.
+            return !material.name().endsWith("AIR");
+        }
     }
 }
